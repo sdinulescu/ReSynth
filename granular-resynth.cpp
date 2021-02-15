@@ -1,3 +1,9 @@
+/* granular-resynth.cpp written by Stejara Dinulescu
+ * MAT240B 2021, Final Project
+ * This file is the main file for this allolib project. 
+ * References: granulator-source-material.cpp written by Karl Yerkes
+ */
+
 #include "al/app/al_App.hpp"
 #include "al/ui/al_ControlGUI.hpp"
 #include "al/ui/al_Parameter.hpp"
@@ -10,7 +16,7 @@ using namespace al;
 struct MyApp : App {
   ControlGUI gui; 
   Granulator granulator; // handles grains
-  al::Parameter gain{"/gain", "", 0.0, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
+  al::Parameter gain{"/gain", "", 0.5, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
   
   MyApp() {} // this is called from the main thread
 
@@ -32,11 +38,10 @@ struct MyApp : App {
   }
 
   void onSound(AudioIOData& io) override {    
-    int sampleIndex = 0;
     while (io()) {
       float f = 0.0;
       for (int i = 0; i < granulator.activeGrains; i++) {
-        f += granulator.grains[i].getSample(sampleIndex);
+        f += granulator.grains[i].calculateSample();
       }
       f /= float(SAMPLE_RATE);
       std::cout << f << std::endl;

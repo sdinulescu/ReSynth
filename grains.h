@@ -1,6 +1,7 @@
 /* grains.h written by Stejara Dinulescu
  * MAT240B 2021, Final Project
- * This file defines the grain stuct and granulator struct
+ * This file defines the grain stuct and granulator struct used in granular-resynth.cpp
+ * References: granulator-source-material.cpp written by Karl Yerkes
  */
 
 # pragma once
@@ -19,7 +20,9 @@ const int MAX_GRAINS = 1000;
 
 struct Grain {
   std::vector<float> clip; 
-  int duration = al::rnd::uniform() * SAMPLE_RATE; // how many frames does it live -> length of clip vector
+  int clipIndex = 0; // if grain is on
+
+  int duration = al::rnd::uniform(1, 5) * SAMPLE_RATE; // how many samples does it live -> length of clip vector
   bool active = false; // whether or not to sound
 
   Grain(float m, float sd) { synthesize(m, sd); } // synthesize clip of sound on init
@@ -32,10 +35,18 @@ struct Grain {
     }
   }
 
-  float getSample(int index) { if (index >= 0 && index < clip.size()) { return clip[index]; } else { return 0.0; } }
+  //float getSample(int index) { if (index >= 0 && index < duration) { return clip[index]; } else { return 0.0; } }
+  float calculateSample() {
+    float sampleValue = 0.0;
+    // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
+    if (active && clipIndex < duration) { sampleValue = clip[clipIndex]; clipIndex++; }
+    checkDeath(); // turn off if the grain is supposed to die this sample
+    return sampleValue;
+  }
 
-  void turnOn() { active = true; }
-  void turnOff() { active = false; }
+  void turnOn() { active = true; clipIndex = 0; }
+  void turnOff() { active = false; clipIndex = 0; }
+  void checkDeath() { if (clipIndex >= duration) { turnOff(); } }
 };
 
 struct Granulator {
