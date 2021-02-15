@@ -16,7 +16,7 @@ using namespace al;
 struct MyApp : App {
   ControlGUI gui; 
   Granulator granulator; // handles grains
-  al::Parameter gain{"/gain", "", 0.5, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
+  al::Parameter gain{"/gain", "", 0.8, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
   
   MyApp() {} // this is called from the main thread
 
@@ -43,7 +43,7 @@ struct MyApp : App {
       for (int i = 0; i < granulator.activeGrains; i++) {
         f += granulator.grains[i].calculateSample();
       }
-      f /= float(SAMPLE_RATE);
+      f /= granulator.activeGrains; //f /= float(SAMPLE_RATE);
       std::cout << f << std::endl;
       if (f > 1.0) {f = 1.0;} else if (f < 0.0) { f = 0.0; } // bounds checking
       io.out(0) = f * gain;
