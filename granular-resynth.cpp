@@ -46,8 +46,8 @@ struct MyApp : App {
       for (int i = 0; i < granulator.activeGrains; i++) {
         f += granulator.grains[i].calculateSample();
       }
-      //f /= granulator.activeGrains; //f /= float(SAMPLE_RATE);
-      std::cout << f << std::endl;
+      f /= granulator.activeGrains; //f /= float(SAMPLE_RATE);
+      //std::cout << f << std::endl;
       if (f > 1.0) {f = 1.0;} else if (f < 0.0) { f = 0.0; } // bounds checking
       io.out(0) = f * gain;
       io.out(1) = f * gain;

@@ -216,25 +216,36 @@ struct Line {
 //   float operator()() { return sine(Phasor::operator()()); }
 // };
 
+struct ExpSeg {
+  Line line;
+  void set(double v, double t, double s) { line.set(log2(v), log2(t), s); }
+  void set(double t, double s) { line.set(log2(t), s); }
+  void set(double t) { line.set(log2(t)); }
+  float operator()() { return pow(2.0f, line()); }
+};
+
 struct Grain {
   // std::vector<float> clip; 
-  int clipIndex = 0; // if grain is on
+  //int clipIndex = 0; // if grain is on
 
   int duration = 0; // how many samples does it live -> length of clip vector
   bool active = false; // whether or not to sound
 
   // FM SYNTHESIS PARAMS
   
-  gam::Sine<> carrier; 
-  gam::Sine<> modulator; 
+  gam::Sine<float> carrier; 
+  gam::Sine<float> modulator; 
   Line moddepth; 
+  ExpSeg alpha;
+  ExpSeg beta;
 
   Grain(float m, float sd, float mod_index) { 
     synthesize(m, sd, mod_index); // synthesize clip of sound on init
   } 
 
   void synthesize(float mean, float stdv, float mod_depth) { // REWORK THIS TO FM SYNTH
-    float d = al::rnd::uniform(0, 5); // duration is randomly set on grain generation, consistent for carrier, modulator, and moddepth
+    float d = 5;
+    //float d = al::rnd::uniform(0, 5); // duration is randomly set on grain generation, consistent for carrier, modulator, and moddepth
     // first, set grain params based on mean and stddev of distribution
     //carrier.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
     //modulator.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
@@ -252,17 +263,27 @@ struct Grain {
 
   //float getSample(int index) { if (index >= 0 && index < duration) { return clip[index]; } else { return 0.0; } }
   float calculateSample() {
+    modulator.freq(beta());
+    carrier.freq(alpha() + moddepth() * modulator());
+
     float sampleValue = 0.0;
+    //sampleValue = carrier(); // envelope * carrier here
+
     // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
-    if (active) { sampleValue = carrier() + moddepth() * modulator(); clipIndex++; } // freq modulation
+    //if (active) std::cout<< "active" << std::endl;
+    if (active) { // freq modulation. sampleValue = carrier() * envelope() once envelope is implemented.
+      sampleValue = carrier(); 
+      //clipIndex++; 
+      //std::cout<< "calc sample " << sampleValue <<std::endl; 
+    }
     //if (active && clipIndex < duration) { sampleValue = clip[clipIndex]; clipIndex++; }
-    checkDeath(); // turn off if the grain is supposed to die this sample
+    //checkDeath(); // turn off if the grain is supposed to die this sample
     return sampleValue;
   }
 
-  void turnOn() { active = true; clipIndex = 0; }
-  void turnOff() { active = false; clipIndex = 0; }
-  void checkDeath() { if (clipIndex >= duration) { turnOff(); } }
+  void turnOn() { active = true; }
+  void turnOff() { active = false; }
+  //void checkDeath() { if (clipIndex >= duration) { turnOff(); } }
 };
 
 struct Granulator {
@@ -283,6 +304,7 @@ struct Granulator {
     for (int i = 0; i < MAX_GRAINS; i++) {
       Grain g(mean, stdv, modulation_depth);
       if (i < nGrains) {
+        std::cout << "turn on" << std::endl;
         g.turnOn(); // turn on grain if its index is from 0 to nGrains
       }
       grains.push_back(g);
