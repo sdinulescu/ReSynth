@@ -44,10 +44,15 @@ struct MyApp : App {
   void onSound(AudioIOData& io) override {    
     while (io()) {
       float f = 0.0;
+      int n = 0; // keeps track of grains that are sounding
       for (int i = 0; i < granulator.activeGrains; i++) {
-        f += granulator.grains[i].calculateSample();
+        float newSample = granulator.grains[i].calculateSample();
+        if (newSample != 0) {n++;}
+        //if (newSample == 0) { granulator.activeGrains -= 1; } else {n++;}
+        f += newSample;
       }
-      f /= granulator.activeGrains; //f /= float(SAMPLE_RATE);
+      //std::cout << n << " " << granulator.activeGrains << std::endl;
+      f /= granulator.activeGrains;
       //std::cout << f << std::endl;
       if (f > 1.0) {f = 1.0;} else if (f < 0.0) { f = 0.0; } // bounds checking
       io.out(0) = f * gain;
