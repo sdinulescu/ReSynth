@@ -22,17 +22,17 @@ struct MyApp : App {
 
   void onCreate() override {
     gui.init();
-    gui << granulator.nGrains << granulator.mean << granulator.stdv << granulator.modulation_depth << gain;
+    gui << granulator.nGrains << granulator.carrier_mean << granulator.carrier_stdv << 
+           granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << gain;
   }
 
   void onAnimate(double dt) override {
     navControl().active(!gui.usingInput());
     // check if gui inputs for mean and stddev actually makes sense (i.e. restrict Hz vals between 0 and ~2000)
-    if (granulator.mean - granulator.stdv < 0) { granulator.stdv.set(granulator.mean); } // if stddev is greater than mean, set to the mean value
-    if (granulator.mean + granulator.stdv > 2000) { granulator.stdv.set(2000 - granulator.mean); } // if mean + stddev > max Hz value, reduce stddev to a value that makes sense
+    //if (granulator.mean - granulator.stdv < 0) { granulator.stdv.set(granulator.mean); } // if stddev is greater than mean, set to the mean value
+    //if (granulator.mean + granulator.stdv > 2000) { granulator.stdv.set(2000 - granulator.mean); } // if mean + stddev > max Hz value, reduce stddev to a value that makes sense
 
-    // update which grains are active if need be
-    granulator.updateActiveGrains();
+    // update params if mean, stdv, or grain num is changed
     granulator.updateGranulatorParams();
   }
 
