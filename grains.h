@@ -243,28 +243,21 @@ struct Grain {
 
   Grain() { } // empty constructor
 
-  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth) { // REWORK THIS TO FM SYNTH
-    float d = al::rnd::uniform(1, 10);
-    //float d = al::rnd::uniform(0, 5); // duration is randomly set on grain generation, consistent for carrier, modulator, and moddepth
-    // first, set grain params based on mean and stddev of distribution
-    //carrier.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
-    //modulator.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
-    //carrier.freq(al::rnd::uniform(mean - stdv, mean + stdv));
-    float carrier_freq = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
-    float mod_freq = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, 4000.0, 0.0);
-    carrier.freq(carrier_freq);
-    modulator.freq(mod_freq);
+  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth) {
+    float d = al::rnd::uniform(1, 10); // duration
+
+    float carrier_start = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
+    float carrier_end = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
+    float mod_start = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, 4000.0, 0.0);
+    float mod_end = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, 4000.0, 0.0);
+
+    alpha.set(carrier_start, carrier_end, d);
+    beta.set(mod_start, mod_end, d);
+    carrier.freq(0);
+    modulator.freq(0);
+
     moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
                  al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
-
-    std::cout << "carrier: " << carrier_freq << " mod: " << mod_freq << std::endl;
-    // moddepth NEEDS to be less than mean I think. Consider using exposing mod_depth as a slider to control this? 
-
-    // given a mean and a standard deviation, synthesize a buffer of float values. This was just randomly generated noise for initial test.
-    // for (int i = 0; i < duration; i++) {
-    //   float sample_value = al::rnd::uniform(mean - stdv, mean + stdv); // generate a sample value between mean +- stdv
-    //   clip.push_back(sample_value);
-    // }
   }
 
   //float getSample(int index) { if (index >= 0 && index < duration) { return clip[index]; } else { return 0.0; } }
@@ -297,12 +290,12 @@ struct Granulator {
   al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for active grains
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_cmean = carrier_mean;
-  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.001, 1.0}; // user input for standard deviation frequency value of granulator
+  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
   float p_cstdv = carrier_stdv;
 
-   al::Parameter modulator_mean{"/modulator mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
+   al::Parameter modulator_mean{"/modulator mean", "", 800.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_mmean = modulator_mean;
-  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.001, 1.0}; // user input for standard deviation frequency value of granulator
+  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
   float p_mstdv = modulator_stdv;
   al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
 
@@ -341,7 +334,6 @@ struct Granulator {
   void updateGranulatorParams() {
     if (nGrains != activeGrains) {updateActiveGrains();}
     if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
-      std::cout << "mean or stdv changed" << std::endl;
       for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth);} // turn off all grains, resynth
       p_cmean = carrier_mean;
       p_cstdv = carrier_stdv;
