@@ -12,6 +12,8 @@
 #include "al/ui/al_Parameter.hpp"
 #include "al/math/al_Random.hpp"  // rnd::uniform()
 #include "Gamma/Oscillator.h"
+#include "al/math/al_Functions.hpp"  // al::clip
+
 
 const int SAMPLE_RATE = 48000; 
 const int BLOCK_SIZE = 2048; 
@@ -249,9 +251,11 @@ struct Grain {
     // first, set grain params based on mean and stddev of distribution
     //carrier.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
     //modulator.set(al::rnd::uniform(mean - stdv), al::rnd::uniform(mean + stdv), d); // set start freq, target freq, duration in seconds
-    carrier.freq(al::rnd::uniform(mean - stdv, mean + stdv));
-    modulator.freq(al::rnd::uniform(mean - stdv, mean + stdv));
-    moddepth.set(al::rnd::uniform(mod_depth - stdv, mod_depth + stdv), al::rnd::uniform(mod_depth - stdv, mod_depth + stdv), d); // set start freq, target freq, duration in seconds
+    //carrier.freq(al::rnd::uniform(mean - stdv, mean + stdv));
+    carrier.freq(al::clip((double)al::rnd::normal()/stdv + (double)mean, 2000.0, 0.0));
+    modulator.freq(al::clip((double)al::rnd::normal()/stdv + (double)mean, 2000.0, 0.0));
+    moddepth.set(al::clip((double)al::rnd::normal()/stdv + (double)mean, 2000.0, 0.0), 
+                 al::clip((double)al::rnd::normal()/stdv + (double)mean, 2000.0, 0.0), d); // set start freq, target freq, duration in seconds
     // moddepth NEEDS to be less than mean I think. Consider using exposing mod_depth as a slider to control this? 
 
     // given a mean and a standard deviation, synthesize a buffer of float values. This was just randomly generated noise for initial test.
@@ -290,7 +294,9 @@ struct Granulator {
   // GUI accessible parameters
   al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for active grains
   al::Parameter mean{"/mean", "", 440.0, "", 20.0, 2000.0}; // user input for mean frequency value of granulator, in Hz
+  float pmean = mean;
   al::Parameter stdv{"/standard deviation", "", 300.0, "", 0.0, 1000}; // user input for standard deviation frequency value of granulator, in Hz
+  float pstdv = stdv;
   // this needs to be restricted upon generation so that we don't get mean Hz values below 20 or so or above ~2000 or so
   al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
 
@@ -304,7 +310,7 @@ struct Granulator {
     for (int i = 0; i < MAX_GRAINS; i++) {
       Grain g(mean, stdv, modulation_depth);
       if (i < nGrains) {
-        std::cout << "turn on" << std::endl;
+        //std::cout << "turn on" << std::endl;
         g.turnOn(); // turn on grain if its index is from 0 to nGrains
       }
       grains.push_back(g);
@@ -326,10 +332,14 @@ struct Granulator {
   }
 
   void updateGranulatorParams() {
-    if (nGrains.hasChange()) { updateActiveGrains(); }
-    if (mean.hasChange() || stdv.hasChange()) { 
+    if (nGrains != activeGrains) {updateActiveGrains();}
+    if (pmean != mean || pstdv != stdv) { 
+      std::cout << "mean or stdv changed" << std::endl;
+      for (int i = 0; i < grains.size(); i++) { grains[i].turnOff();} // turn off all grains, resynth
       grains.erase(grains.begin());
       synthesize();
+      pmean = mean;
+      pstdv = stdv;
     }
   }
 };

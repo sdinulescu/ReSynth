@@ -33,6 +33,7 @@ struct MyApp : App {
 
     // update which grains are active if need be
     granulator.updateActiveGrains();
+    granulator.updateGranulatorParams();
   }
 
   void onDraw(Graphics& g) override {
