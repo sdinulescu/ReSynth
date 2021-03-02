@@ -335,9 +335,7 @@ struct Granulator {
     if (nGrains != activeGrains) {updateActiveGrains();}
     if (pmean != mean || pstdv != stdv) { 
       std::cout << "mean or stdv changed" << std::endl;
-      for (int i = 0; i < grains.size(); i++) { grains[i].turnOff();} // turn off all grains, resynth
-      grains.erase(grains.begin());
-      synthesize();
+      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(mean, stdv, modulation_depth);} // turn off all grains, resynth
       pmean = mean;
       pstdv = stdv;
     }
