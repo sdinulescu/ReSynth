@@ -110,8 +110,8 @@ struct ADSR {
   }
 };
 
-struct Grain {
-  int duration = 0; // how many samples does it live -> length of clip vector
+struct Grain : al::SynthVoice {
+  float duration = 0.0; // how many samples does it live -> length of clip vector
   bool active = false; // whether or not to sound
 
   // FM SYNTHESIS PARAMS
@@ -127,6 +127,7 @@ struct Grain {
 
   void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth, float env) {
     float d = al::rnd::uniform(1, 3); // duration
+    duration = d;
 
     float carrier_start = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
     float carrier_end = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
@@ -141,23 +142,43 @@ struct Grain {
     moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
                  al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
 
-    envelope.set(env * d, (1.0-env) * d, env * d, env * d); // ADSR
+    envelope.set(env * d, (1.0-env) * d, env * d, (1.0-env) * d); // ADSR
     //envelope.print();
   }
 
-  //float getSample(int index) { if (index >= 0 && index < duration) { return clip[index]; } else { return 0.0; } }
-  float calculateSample() {
-    modulator.freq(beta());
-    carrier.freq(alpha() + moddepth() * modulator());
+  // float calculateSample() {
+  //   modulator.freq(beta());
+  //   carrier.freq(alpha() + moddepth() * modulator());
 
-    float sampleValue = 0.0;
-    // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
-    //if (active) std::cout<< "active" << std::endl;
-    if (active) { // freq modulation. sampleValue = carrier() * envelope() once envelope is implemented.
-      sampleValue = carrier() * envelope(); 
+  //   float sampleValue = 0.0;
+  //   // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
+  //   //if (active) std::cout<< "active" << std::endl;
+  //   if (active) { // freq modulation. sampleValue = carrier() * envelope() once envelope is implemented.
+  //     sampleValue = carrier() * envelope(); 
+  //   }
+  //   checkDeath(); // turn off if the grain is supposed to die this sample
+  //   return sampleValue;
+  // }
+
+  void onProcess(al::AudioIOData& io) override {
+    while (io()) {
+      modulator.freq(beta());
+      carrier.freq(alpha() + moddepth() * modulator());
+      
+      //float p = pan();
+      float v = envelope() * carrier();
+
+      // io.out(0) += (1 - p) * v;
+      // io.out(1) += p * v;
+
+      io.out(0) += v;
+      io.out(1) += v;
+
+      if (envelope.decay.done()) {
+        free();
+        break;
+      }
     }
-    checkDeath(); // turn off if the grain is supposed to die this sample
-    return sampleValue;
   }
 
   void turnOn() { active = true; envelope.on(); }
@@ -182,46 +203,38 @@ struct Granulator {
   al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
 
   int activeGrains = 0; // keep track of active grains, turn on and off based on nGrains
-  std::vector<Grain> grains; //stores 1000 grains on init, activeGrains specifies number of active grains
+  //std::vector<Grain> grains; //stores 1000 grains on init, activeGrains specifies number of active grains
+  al::PolySynth polySynth; // replaces vector of grains
 
-  // creates and stores 1000 from the get go. activates nGrains out of the 1000. 
-  Granulator() { synthesize(); }
   
-  void synthesize() {
-    for (int i = 0; i < MAX_GRAINS; i++) {
-      Grain g;
-      g.synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);
-      if (i < nGrains) {
-        //std::cout << "turn on" << std::endl;
-        g.turnOn(); // turn on grain if its index is from 0 to nGrains
-      }
-      grains.push_back(g);
-    }
-    activeGrains = nGrains;
+  Granulator() { polySynth.allocatePolyphony<Grain>(nGrains); } //synthesize(); 
+  
+  void set(Grain* voice) {
+    voice->synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);
   }
 
   void updateActiveGrains() { // turn grains on/off if need be
-    if (nGrains < activeGrains) { // if new number is lower than previous number of active grains
-      for (int i = 0; i < activeGrains - nGrains; i++) {
-        grains[nGrains + i].turnOff(); // turn off the ones @ index > nGrains
-      }
-    } else if (nGrains > activeGrains) { // if new number is higher than previous number of active grains
-      for (int i = 0; i < nGrains - activeGrains; i++) {
-        grains[activeGrains + i].turnOn(); // turn on the ones @ index > active Grains
-      }
-    }
-    activeGrains = nGrains; // update number of active grains 
+    // if (nGrains < activeGrains) { // if new number is lower than previous number of active grains
+    //   for (int i = 0; i < activeGrains - nGrains; i++) {
+    //     grains[nGrains + i].turnOff(); // turn off the ones @ index > nGrains
+    //   }
+    // } else if (nGrains > activeGrains) { // if new number is higher than previous number of active grains
+    //   for (int i = 0; i < nGrains - activeGrains; i++) {
+    //     grains[activeGrains + i].turnOn(); // turn on the ones @ index > active Grains
+    //   }
+    // }
+    // activeGrains = nGrains; // update number of active grains 
   }
 
-  void updateGranulatorParams() {
-    if (nGrains != activeGrains) {updateActiveGrains();}
-    if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
-      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
-      p_cmean = carrier_mean;
-      p_cstdv = carrier_stdv;
-      p_mmean = modulator_mean;
-      p_mstdv = modulator_stdv;
-    }
+  void updateParameters() {
+    // if (nGrains != activeGrains) {updateActiveGrains();}
+    // if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
+    //   for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
+    //   p_cmean = carrier_mean;
+    //   p_cstdv = carrier_stdv;
+    //   p_mmean = modulator_mean;
+    //   p_mstdv = modulator_stdv;
+    // }
   }
 };
 
