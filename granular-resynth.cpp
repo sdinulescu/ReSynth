@@ -16,14 +16,15 @@ using namespace al;
 struct MyApp : App {
   ControlGUI gui; 
   Granulator granulator; // handles grains
+
   al::Parameter gain{"/gain", "", 0.8, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
-  
+
   MyApp() {} // this is called from the main thread
 
   void onCreate() override {
     gui.init();
     gui << granulator.nGrains << granulator.carrier_mean << granulator.carrier_stdv << 
-           granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << gain;
+           granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << granulator.envelope << gain;
   }
 
   void onAnimate(double dt) override {
@@ -52,7 +53,7 @@ struct MyApp : App {
         f += newSample;
       }
       //std::cout << n << " " << granulator.activeGrains << std::endl;
-      f /= granulator.activeGrains;
+      //f /= granulator.activeGrains;
       //std::cout << f << std::endl;
       if (f > 1.0) {f = 1.0;} else if (f < 0.0) { f = 0.0; } // bounds checking
       io.out(0) = f * gain;
@@ -63,6 +64,6 @@ struct MyApp : App {
 
 int main() {
   MyApp app;
-  app.configureAudio(SAMPLE_RATE, BLOCK_SIZE, OUTPUT_CHANNELS);
+  app.configureAudio(SAMPLE_RATE, 768, OUTPUT_CHANNELS);
   app.start();
 }

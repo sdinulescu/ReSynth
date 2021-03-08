@@ -65,6 +65,51 @@ struct ExpSeg {
   float operator()() { return pow(2.0f, line()); }
 };
 
+struct ADSR {
+  Line attack, decay, release;
+  int state = 0;
+
+  void set(float a, float d, float s, float r) {
+    attack.set(0, 1, a);
+    decay.set(1, s, d);
+    release.set(s, 0, r);
+  }
+
+  void on() {
+    attack.value = 0;
+    decay.value = 1;
+    state = 1;
+  }
+
+  void off() {
+    release.value = decay.target;
+    state = 3;
+  }
+
+  float operator()() {
+    switch (state) {
+      default:
+      case 0:
+        return 0;
+      case 1:
+        if (!attack.done()) return attack();
+        if (!decay.done()) return decay();
+        state = 2;
+      case 2:  // sustaining...
+        return decay.target;
+      case 3:
+        return release();
+    }
+  }
+  void print() {
+    printf("  state:%d\n", state);
+    printf("  attack:%f\n", attack.seconds);
+    printf("  decay:%f\n", decay.seconds);
+    printf("  sustain:%f\n", decay.target);
+    printf("  release:%f\n", release.seconds);
+  }
+};
+
 struct Grain {
   int duration = 0; // how many samples does it live -> length of clip vector
   bool active = false; // whether or not to sound
@@ -76,10 +121,11 @@ struct Grain {
   Line moddepth; 
   ExpSeg alpha;
   ExpSeg beta;
+  ADSR envelope;
 
   Grain() { } // empty constructor
 
-  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth) {
+  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth, float env) {
     float d = al::rnd::uniform(1, 3); // duration
 
     float carrier_start = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
@@ -94,6 +140,9 @@ struct Grain {
 
     moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
                  al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
+
+    envelope.set(env * d, (1.0-env) * d, env * d, env * d); // ADSR
+    //envelope.print();
   }
 
   //float getSample(int index) { if (index >= 0 && index < duration) { return clip[index]; } else { return 0.0; } }
@@ -102,35 +151,35 @@ struct Grain {
     carrier.freq(alpha() + moddepth() * modulator());
 
     float sampleValue = 0.0;
-    //sampleValue = carrier(); // envelope * carrier here
-
     // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
     //if (active) std::cout<< "active" << std::endl;
     if (active) { // freq modulation. sampleValue = carrier() * envelope() once envelope is implemented.
-      sampleValue = carrier(); 
+      sampleValue = carrier() * envelope(); 
     }
     checkDeath(); // turn off if the grain is supposed to die this sample
     return sampleValue;
   }
 
-  void turnOn() { active = true; }
-  void turnOff() { active = false; }
+  void turnOn() { active = true; envelope.on(); }
+  void turnOff() { active = false; envelope.off(); }
   void checkDeath() { if (alpha.line.done() || beta.line.done()) { turnOff(); } }
 };
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for active grains
+  al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for active grains
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_cmean = carrier_mean;
   al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
   float p_cstdv = carrier_stdv;
 
-   al::Parameter modulator_mean{"/modulator mean", "", 800.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
+  al::Parameter modulator_mean{"/modulator mean", "", 800.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_mmean = modulator_mean;
   al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
   float p_mstdv = modulator_stdv;
   al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
+
+  al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
 
   int activeGrains = 0; // keep track of active grains, turn on and off based on nGrains
   std::vector<Grain> grains; //stores 1000 grains on init, activeGrains specifies number of active grains
@@ -141,7 +190,7 @@ struct Granulator {
   void synthesize() {
     for (int i = 0; i < MAX_GRAINS; i++) {
       Grain g;
-      g.synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth);
+      g.synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);
       if (i < nGrains) {
         //std::cout << "turn on" << std::endl;
         g.turnOn(); // turn on grain if its index is from 0 to nGrains
@@ -167,7 +216,7 @@ struct Granulator {
   void updateGranulatorParams() {
     if (nGrains != activeGrains) {updateActiveGrains();}
     if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
-      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth);} // turn off all grains, resynth
+      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
       p_cmean = carrier_mean;
       p_cstdv = carrier_stdv;
       p_mmean = modulator_mean;
