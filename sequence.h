@@ -16,6 +16,7 @@
 #include "grains.h"
 
 struct Sequencer{
+  bool active = false; // is the sequencer on? or off?
   al::ParameterInt steps{"/sequencer steps", "", 4, "", 0, 10}; // user input for number of "beats" in the sequencer (can think of sequencer as a measure)
   int psteps = steps;
   al::Parameter rate{"/sequencer rate", "", 1.0, "", 0.1, 10.0}; // user input for mean frequency value of granulator, in Hz
@@ -24,7 +25,7 @@ struct Sequencer{
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
 
-  std::vector<Grain> sequence;
+  std::vector<Grain*> sequence;
 
   Sequencer() { init(); }
 
@@ -32,9 +33,9 @@ struct Sequencer{
     timer.freq(rate);
   }
 
-  void set(Grain g) {
-    sequence[playhead] = g;
-  }
+  // void set(Grain g) {
+  //   sequence[playhead] = g;
+  // }
 
   void updateParameters() {
     //if (psteps != steps) { init(); psteps = steps; }

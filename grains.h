@@ -132,12 +132,12 @@ struct Grain : al::SynthVoice {
   ExpSeg beta;
   AttackDecay envelope;
 
+  al::Vec3f position; 
+
   Grain() { } // empty constructor
 
-  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth, float env) {
+  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth, float env, float gain) {
     float d = al::rnd::uniform(1, 3); // duration
-    duration = d;
-
     float carrier_start = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
     float carrier_end = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, 4000.0, 0.0);
     float mod_start = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, 4000.0, 0.0);
@@ -151,7 +151,7 @@ struct Grain : al::SynthVoice {
     moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
                  al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
 
-    envelope.set(env * d, (1 - env) * d, 0.8);
+    envelope.set(env * d, (1 - env) * d, gain);
   }
 
   void onProcess(al::AudioIOData& io) override {
@@ -173,7 +173,7 @@ struct Grain : al::SynthVoice {
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for active grains
+  al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for grains on-screen
   int activeGrains = nGrains;
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_cmean = carrier_mean;
@@ -189,35 +189,15 @@ struct Granulator {
   al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
   al::PolySynth polySynth; // replaces vector of grains
 
+  al::Parameter gain{"/gain", "", 0.8, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
   
-  Granulator() { polySynth.allocatePolyphony<Grain>(nGrains); } //synthesize(); 
+  Granulator() { polySynth.allocatePolyphony<Grain>(nGrains); } 
   
   void set(Grain* voice) {
-    voice->synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);
+    voice->synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope, gain);
   }
-
-  void updateActiveGrains() {  // change the number of grains on-screen
-    // if (nGrains < activeGrains) { // if new number is lower than previous number of active grains
-    //   for (int i = 0; i < activeGrains - nGrains; i++) {
-    //     grains[nGrains + i].turnOff(); // turn off the ones @ index > nGrains
-    //   }
-    // } else if (nGrains > activeGrains) { // if new number is higher than previous number of active grains
-    //   for (int i = 0; i < nGrains - activeGrains; i++) {
-    //     grains[activeGrains + i].turnOn(); // turn on the ones @ index > active Grains
-    //   }
-    // }
-    // activeGrains = nGrains; // update number of active grains 
-  }
-
-  void updateParameters() {
-    if (nGrains != activeGrains) {updateActiveGrains();}
-    if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
-      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
-      p_cmean = carrier_mean;
-      p_cstdv = carrier_stdv;
-      p_mmean = modulator_mean;
-      p_mstdv = modulator_stdv;
-    }
+  void set(Grain* voice, Grain* g ) {
+    voice = g;
   }
 };
 
