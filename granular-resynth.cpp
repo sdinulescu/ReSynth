@@ -17,8 +17,13 @@ using namespace al;
 struct MyApp : App {
   ControlGUI gui; 
   Granulator granulator; // handles grains
-  Sequencer sequencer; // handles sequence
+  //Sequencer sequencer; // handles sequence
   std::mutex mutex; // mutex for audio callback
+
+  al::ParameterInt steps{"/sequencer steps", "", 4, "", 0, 10}; // user input for number of "beats" in the sequencer (can think of sequencer as a measure)
+  al::Parameter rate{"/sequencer rate", "", 1.0, "", 0.1, 10.0}; // user input for mean frequency value of granulator, in Hz
+  gam::Accum<> timer; // rate timer
+  int playhead = 0; // where we are in the sequencer
 
   MyApp() {} // this is called from the main thread
 
@@ -26,10 +31,9 @@ struct MyApp : App {
     gui.init();
     gui << granulator.nGrains << granulator.carrier_mean << granulator.carrier_stdv << 
            granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << 
-           sequencer.steps << sequencer.rate <<
-           granulator.envelope << granulator.gain;
+           granulator.envelope << granulator.gain << steps << rate;
 
-    granulator.synthesize();
+    timer.freq(rate);
   }
 
   void onAnimate(double dt) override {
@@ -39,7 +43,7 @@ struct MyApp : App {
   void onDraw(Graphics& g) override {
     g.clear(0.2); // background color
     gui.draw(g);
-    granulator.visualizeGrains(g);
+    granulator.polySynth.render(g);  // Call render for PolySynth to generate its output
   }
 
   void onSound(AudioIOData& io) override {    
@@ -47,21 +51,17 @@ struct MyApp : App {
     io.frame(0); // reset the frame so we can go over the frame again below
 
     while (io()) {
-      if (sequencer.timer()) {
+      if (timer()) {
         if (mutex.try_lock()) {
-          if (sequencer.steps > 0) {
+          if (steps > 0) {
             auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-            if (sequencer.sequence.size() == 0) { granulator.set(voice); } // synthesize properties 
-            else {
-              Grain* g = sequencer.sequence[sequencer.playhead]; // get the grain held in the sequencer
-              granulator.set(voice, g); // set the voice to that grain
-            }
+            granulator.set(voice, playhead); // set properties 
             granulator.polySynth.triggerOn(voice); //trigger it on
 
-            sequencer.playhead++;
-            if (sequencer.playhead >= sequencer.steps) {
-              sequencer.playhead -= sequencer.steps;
-              if (sequencer.playhead < 0) { sequencer.playhead = 0; }
+            playhead++;
+            if (playhead >= steps) {
+              playhead -= steps;
+              if (playhead < 0) { playhead = 0; }
             }
           }
           mutex.unlock();
@@ -76,6 +76,7 @@ struct MyApp : App {
 
 int main() {
   MyApp app;
+  app.dimensions(800, 600);
   app.configureAudio(SAMPLE_RATE, 768, OUTPUT_CHANNELS);
   app.start();
 }

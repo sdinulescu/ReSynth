@@ -126,7 +126,28 @@ struct AttackDecay {
   }
 };
 
+struct GrainSettings {
+  float carrier_mean;
+  float carrier_stdv;
+  float modulator_mean;
+  float modulator_stdv;
+  float modulator_depth;
+  float envelope; 
+  float gain;
+
+  void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
+    carrier_mean = cm; 
+    carrier_stdv = csd;
+    modulator_mean = mm;
+    modulator_stdv = msd;
+    modulator_depth = md; 
+    envelope = e;
+    gain = g;
+  }
+};
+
 struct Grain : al::SynthVoice {
+  float duration = 0.0;
   gam::Sine<float> carrier; 
   gam::Sine<float> modulator; 
   Line moddepth; 
@@ -134,26 +155,31 @@ struct Grain : al::SynthVoice {
   ExpSeg beta;
   AttackDecay envelope;
 
-  al::Vec3f position; 
+  al::Vec3f position = al::Vec3f(al::rnd::uniform(), al::rnd::uniform(), al::rnd::uniform()); 
+  al::Mesh mesh;
 
-  Grain() { } // empty constructor
+  Grain() { 
+    //al::addCone(mesh);  // Prepare mesh to draw a cone
+    mesh.primitive(al::Mesh::LINE_STRIP); 
+  }
 
-  void synthesize(float cmean, float cstdv, float mmean, float mstdv, float mod_depth, float env, float gain) {
+  void set(GrainSettings g) {
     float d = al::rnd::uniform(1, MAX_DURATION); // duration
-    float carrier_start = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, MAX_FREQUENCY, 0.0);
-    float carrier_end = al::clip( ((double)al::rnd::normal() / cstdv) + (double)cmean, MAX_FREQUENCY, 0.0);
-    float mod_start = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, MAX_FREQUENCY, 0.0);
-    float mod_end = al::clip((double)al::rnd::normal() / mstdv + (double)mmean, MAX_FREQUENCY, 0.0);
+    duration = d;
+    float carrier_start = al::clip( ((double)al::rnd::normal() / g.carrier_stdv) + (double)g.carrier_mean, MAX_FREQUENCY, 0.0);
+    float carrier_end = al::clip( ((double)al::rnd::normal() / g.carrier_stdv) + (double)g.carrier_mean, MAX_FREQUENCY, 0.0);
+    float mod_start = al::clip((double)al::rnd::normal() / g.modulator_stdv + (double)g.modulator_mean, MAX_FREQUENCY, 0.0);
+    float mod_end = al::clip((double)al::rnd::normal() / g.modulator_stdv + (double)g.modulator_mean, MAX_FREQUENCY, 0.0);
 
     alpha.set(carrier_start, carrier_end, d);
     beta.set(mod_start, mod_end, d);
     carrier.freq(0);
     modulator.freq(0);
 
-    moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
-                 al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
+    moddepth.set(al::clip((double)al::rnd::normal() + (double)g.modulator_depth, 500.0, 0.0), 
+                 al::clip((double)al::rnd::normal() + (double)g.modulator_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
 
-    envelope.set(env * d, (1 - env) * d, gain);
+    envelope.set(g.envelope * d, (1 - g.envelope) * d, g.gain);
 
     float x = d/MAX_DURATION; // normalized duration
     float y = (carrier_end - carrier_start)/MAX_FREQUENCY;
@@ -178,6 +204,15 @@ struct Grain : al::SynthVoice {
       }
     }
   }
+
+  void onProcess(al::Graphics &g) override {
+    g.pushMatrix();
+    g.color(1.0);
+    g.translate(position);
+    g.scale(duration); // scale based on duration
+    g.draw(mesh);  // Draw the mesh
+    g.popMatrix();
+  }
 };
 
 struct Granulator {
@@ -199,41 +234,19 @@ struct Granulator {
   al::Parameter gain{"/gain", "", 0.8, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
 
   al::PolySynth polySynth; 
-  std::vector<Grain*> grains;
-  al::Mesh circles;
-
+  std::vector<GrainSettings> settings;
+  
   Granulator() { 
-    polySynth.allocatePolyphony<Grain>(nGrains); 
-    circles.primitive(al::Mesh::TRIANGLES); 
+    for (int i = 0; i < MAX_GRAINS; i++) { // push back all of the different settings for MAX_GRAINS at the start of the program
+      GrainSettings g;
+      g.set(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope, gain);
+      settings.push_back(g);
+    }
+    polySynth.allocatePolyphony<Grain>(nGrains); //this handles all grains that can happen at once
   } 
-  
-  void synthesize() {
-    for (int i = 0; i < nGrains; i++) {
-      Grain* g = new Grain(); 
-      //std::cout << "here" << std::endl;
-      set(g);
-      //std::cout << g->position << std::endl;
-      circles.vertex(g->position);
-      grains.push_back(g);
-    }
-  }
-  
-  void set(Grain* voice) {
-    voice->synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope, gain);
-    //std::cout << "set" << std::endl;
-  }
-  void set(Grain* voice, Grain* g ) {
-    voice = g;
-  }
 
-  void visualizeGrains(al::Graphics& g) {
-    for (int i = 0; i < nGrains; i++) {
-      g.pushMatrix();
-      //g.color(hover[i] ? 0.5 : 1.0);
-      g.translate(grains[i]->position);
-      g.draw(circles);
-      g.popMatrix();
-    }
+  void set(Grain* voice, int index) {
+    voice->set(settings[index]);
   }
 };
 
