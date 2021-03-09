@@ -62,7 +62,7 @@ struct MyApp : App {
             //voice->set()
             granulator.polySynth.triggerOn(voice); //trigger it on
             // f = (float)granulator.grains[playhead].calculateSample();
-            // std::cout << f << std::endl;
+            //std::cout << f << std::endl;
             sequencer.playhead++;
             if (sequencer.playhead >= sequencer.steps) {
               sequencer.playhead -= sequencer.steps;

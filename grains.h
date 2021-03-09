@@ -110,18 +110,27 @@ struct ADSR {
   }
 };
 
-struct Grain : al::SynthVoice {
-  float duration = 0.0; // how many samples does it live -> length of clip vector
-  bool active = false; // whether or not to sound
+struct AttackDecay {
+  Line attack, decay;
 
-  // FM SYNTHESIS PARAMS
-  
+  void set(float riseTime, float fallTime, float peakValue) {
+    attack.set(0, peakValue, riseTime);
+    decay.set(peakValue, 0, fallTime);
+  }
+
+  float operator()() {
+    if (!attack.done()) return attack();
+    return decay();
+  }
+};
+
+struct Grain : al::SynthVoice {
   gam::Sine<float> carrier; 
   gam::Sine<float> modulator; 
   Line moddepth; 
   ExpSeg alpha;
   ExpSeg beta;
-  ADSR envelope;
+  AttackDecay envelope;
 
   Grain() { } // empty constructor
 
@@ -142,53 +151,30 @@ struct Grain : al::SynthVoice {
     moddepth.set(al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), 
                  al::clip((double)al::rnd::normal() + (double)mod_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
 
-    envelope.set(env * d, (1.0-env) * d, env * d, (1.0-env) * d); // ADSR
-    //envelope.print();
+    envelope.set(env * d, (1 - env) * d, 0.8);
   }
-
-  // float calculateSample() {
-  //   modulator.freq(beta());
-  //   carrier.freq(alpha() + moddepth() * modulator());
-
-  //   float sampleValue = 0.0;
-  //   // if the grain is turned on to sound, return the audio sample value. otherwise it returns 0. 
-  //   //if (active) std::cout<< "active" << std::endl;
-  //   if (active) { // freq modulation. sampleValue = carrier() * envelope() once envelope is implemented.
-  //     sampleValue = carrier() * envelope(); 
-  //   }
-  //   checkDeath(); // turn off if the grain is supposed to die this sample
-  //   return sampleValue;
-  // }
 
   void onProcess(al::AudioIOData& io) override {
     while (io()) {
       modulator.freq(beta());
       carrier.freq(alpha() + moddepth() * modulator());
       
-      //float p = pan();
       float v = envelope() * carrier();
-
-      // io.out(0) += (1 - p) * v;
-      // io.out(1) += p * v;
-
       io.out(0) += v;
       io.out(1) += v;
 
-      if (envelope.decay.done()) {
+      if (alpha.line.done() || beta.line.done() || envelope.decay.done()) {
         free();
         break;
       }
     }
   }
-
-  void turnOn() { active = true; envelope.on(); }
-  void turnOff() { active = false; envelope.off(); }
-  void checkDeath() { if (alpha.line.done() || beta.line.done()) { turnOff(); } }
 };
 
 struct Granulator {
   // GUI accessible parameters
   al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for active grains
+  int activeGrains = nGrains;
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   float p_cmean = carrier_mean;
   al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
@@ -201,9 +187,6 @@ struct Granulator {
   al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
 
   al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
-
-  int activeGrains = 0; // keep track of active grains, turn on and off based on nGrains
-  //std::vector<Grain> grains; //stores 1000 grains on init, activeGrains specifies number of active grains
   al::PolySynth polySynth; // replaces vector of grains
 
   
@@ -213,7 +196,7 @@ struct Granulator {
     voice->synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);
   }
 
-  void updateActiveGrains() { // turn grains on/off if need be
+  void updateActiveGrains() {  // change the number of grains on-screen
     // if (nGrains < activeGrains) { // if new number is lower than previous number of active grains
     //   for (int i = 0; i < activeGrains - nGrains; i++) {
     //     grains[nGrains + i].turnOff(); // turn off the ones @ index > nGrains
@@ -227,14 +210,14 @@ struct Granulator {
   }
 
   void updateParameters() {
-    // if (nGrains != activeGrains) {updateActiveGrains();}
-    // if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
-    //   for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
-    //   p_cmean = carrier_mean;
-    //   p_cstdv = carrier_stdv;
-    //   p_mmean = modulator_mean;
-    //   p_mstdv = modulator_stdv;
-    // }
+    if (nGrains != activeGrains) {updateActiveGrains();}
+    if (p_cmean != carrier_mean || p_cstdv != carrier_stdv || p_mmean != modulator_mean || p_mstdv != modulator_mean) { 
+      for (int i = 0; i < grains.size(); i++) { grains[i].synthesize(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope);} // turn off all grains, resynth
+      p_cmean = carrier_mean;
+      p_cstdv = carrier_stdv;
+      p_mmean = modulator_mean;
+      p_mstdv = modulator_stdv;
+    }
   }
 };
 
