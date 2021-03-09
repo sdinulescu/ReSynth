@@ -28,6 +28,8 @@ struct MyApp : App {
            granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << 
            sequencer.steps << sequencer.rate <<
            granulator.envelope << granulator.gain;
+
+    granulator.synthesize();
   }
 
   void onAnimate(double dt) override {
@@ -37,6 +39,7 @@ struct MyApp : App {
   void onDraw(Graphics& g) override {
     g.clear(0.2); // background color
     gui.draw(g);
+    granulator.visualizeGrains(g);
   }
 
   void onSound(AudioIOData& io) override {    

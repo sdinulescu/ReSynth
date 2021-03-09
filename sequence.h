@@ -33,9 +33,17 @@ struct Sequencer{
     timer.freq(rate);
   }
 
-  // void set(Grain g) {
-  //   sequence[playhead] = g;
-  // }
+  void add(Grain* g) {
+    if (sequence.size() < steps) {
+      sequence.push_back(g);
+    } else { std::cout << "sequencer is full" << std::endl; }
+  }
+
+  void add(Grain* g, int index) {
+    if (index > 0 && index < steps) {
+      sequence[index] = g;
+    } else { std::cout << "invalid index" << std::endl; }
+  }
 
   void updateParameters() {
     //if (psteps != steps) { init(); psteps = steps; }
