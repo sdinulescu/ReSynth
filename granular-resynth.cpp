@@ -10,7 +10,7 @@
 #include "al/ui/al_PresetHandler.hpp"
 #include "al/ui/al_PresetServer.hpp"
 #include "grains.h"
-#include "sequence.h"
+//#include "sequence.h"
 
 using namespace al;
 
@@ -38,6 +38,8 @@ struct MyApp : App {
 
   void onAnimate(double dt) override {
     navControl().active(!gui.usingInput());
+
+    if (timer.freq() != rate) {timer.freq(rate);} // reset the timer rate if it changes
   }
 
   void onDraw(Graphics& g) override {
@@ -55,10 +57,10 @@ struct MyApp : App {
         if (mutex.try_lock()) {
           if (steps > 0) {
             auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-            granulator.set(voice, playhead); // set properties 
+            granulator.set(voice, playhead); // set properties of the voice -> taken from settings[playhead index]
             granulator.polySynth.triggerOn(voice); //trigger it on
 
-            playhead++;
+            playhead++; // increment the playhead
             if (playhead >= steps) {
               playhead -= steps;
               if (playhead < 0) { playhead = 0; }

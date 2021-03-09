@@ -127,22 +127,29 @@ struct AttackDecay {
 };
 
 struct GrainSettings {
-  float carrier_mean;
-  float carrier_stdv;
-  float modulator_mean;
-  float modulator_stdv;
+  float carrier_start;
+  float carrier_end;
+  float modulator_start;
+  float modulator_end;
   float modulator_depth;
+  float md_start; // modulation index start
+  float md_end; // modulation index end
   float envelope; 
   float gain;
+  float duration;
 
   void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
-    carrier_mean = cm; 
-    carrier_stdv = csd;
-    modulator_mean = mm;
-    modulator_stdv = msd;
+    duration = al::rnd::uniform(1, MAX_DURATION);
     modulator_depth = md; 
     envelope = e;
     gain = g;
+
+    carrier_start = al::clip( ((double)al::rnd::normal() / csd) + (double)cm, MAX_FREQUENCY, 0.0);
+    carrier_end = al::clip( ((double)al::rnd::normal() / csd) + (double)cm, MAX_FREQUENCY, 0.0);
+    modulator_start = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
+    modulator_end = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
+    md_start = al::clip((double)al::rnd::normal() + (double)md, 500.0, 0.0);
+    md_end = al::clip((double)al::rnd::normal() + (double)md, 500.0, 0.0);
   }
 };
 
@@ -164,27 +171,21 @@ struct Grain : al::SynthVoice {
   }
 
   void set(GrainSettings g) {
-    float d = al::rnd::uniform(1, MAX_DURATION); // duration
-    duration = d;
-    float carrier_start = al::clip( ((double)al::rnd::normal() / g.carrier_stdv) + (double)g.carrier_mean, MAX_FREQUENCY, 0.0);
-    float carrier_end = al::clip( ((double)al::rnd::normal() / g.carrier_stdv) + (double)g.carrier_mean, MAX_FREQUENCY, 0.0);
-    float mod_start = al::clip((double)al::rnd::normal() / g.modulator_stdv + (double)g.modulator_mean, MAX_FREQUENCY, 0.0);
-    float mod_end = al::clip((double)al::rnd::normal() / g.modulator_stdv + (double)g.modulator_mean, MAX_FREQUENCY, 0.0);
+    duration = g.duration;
 
-    alpha.set(carrier_start, carrier_end, d);
-    beta.set(mod_start, mod_end, d);
+    alpha.set(g.carrier_start, g.carrier_end, g.duration);
+    beta.set(g.modulator_start, g.modulator_end, g.duration);
     carrier.freq(0);
     modulator.freq(0);
 
-    moddepth.set(al::clip((double)al::rnd::normal() + (double)g.modulator_depth, 500.0, 0.0), 
-                 al::clip((double)al::rnd::normal() + (double)g.modulator_depth, 500.0, 0.0), d); // set start freq, target freq, duration in seconds
+    moddepth.set(g.md_start, g.md_end, duration); // set start freq, target freq, duration in seconds
 
-    envelope.set(g.envelope * d, (1 - g.envelope) * d, g.gain);
+    envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
 
-    float x = d/MAX_DURATION; // normalized duration
-    float y = (carrier_end - carrier_start)/MAX_FREQUENCY;
-    float z = (mod_end - mod_start)/MAX_FREQUENCY;
-    position = al::Vec3f(x, y, z);
+    // float x = g.duration/MAX_DURATION; // normalized duration
+    // float y = (g,carrier_end - g.carrier_start)/MAX_FREQUENCY;
+    // float z = (g.mod_end - g.mod_start)/MAX_FREQUENCY;
+    // position = al::Vec3f(x, y, z);
   }
   
   void setPosition(al::Vec3f pos) { position = pos; }
@@ -218,16 +219,11 @@ struct Grain : al::SynthVoice {
 struct Granulator {
   // GUI accessible parameters
   al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for grains on-screen
-  int activeGrains = nGrains;
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
-  float p_cmean = carrier_mean;
   al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
-  float p_cstdv = carrier_stdv;
 
   al::Parameter modulator_mean{"/modulator mean", "", 800.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
-  float p_mmean = modulator_mean;
   al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
-  float p_mstdv = modulator_stdv;
   al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
 
   al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
