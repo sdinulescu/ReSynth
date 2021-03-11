@@ -138,8 +138,15 @@ struct GrainSettings {
   float gain;
   float duration;
 
+  al::Vec3f position;
+  al::Mesh mesh;
+  float size;
+
+  GrainSettings() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
+
   void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
     duration = al::rnd::uniform(1, MAX_DURATION);
+    size = duration/MAX_DURATION;
     modulator_depth = md; 
     envelope = e;
     gain = g;
@@ -150,6 +157,23 @@ struct GrainSettings {
     modulator_end = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
     md_start = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
     md_end = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
+
+    float x = (carrier_end - carrier_start)/10;
+    float y = (modulator_end - modulator_start)/10;
+    float z = (md_end - md_start)/10; // normalized duration
+    position = al::Vec3f(x, y, z);
+    //std::cout << position << std::endl;
+
+    // draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
+    const int N = 100;
+    for (int i = 1; i < N + 1; i++) {
+      float a0 = i * M_PI * 2 / N;
+      float a1 = (i - 1) * M_PI * 2 / N;
+      float r = 0.1;
+      mesh.vertex(0, 0);
+      mesh.vertex(r * sin(a0), r * cos(a0));
+      mesh.vertex(r * sin(a1), r * cos(a1));
+    }
   }
 };
 
@@ -162,8 +186,8 @@ struct Grain : al::SynthVoice {
   ExpSeg beta;
   AttackDecay envelope;
 
-  al::Vec3f position; // = al::Vec3f(al::rnd::uniform(), al::rnd::uniform(), al::rnd::uniform()); 
   al::Mesh mesh;
+  al::Vec3f position;
 
   Grain() { 
     //al::addCone(mesh);  // Prepare mesh to draw a cone
@@ -193,14 +217,10 @@ struct Grain : al::SynthVoice {
       mesh.vertex(r * sin(a1), r * cos(a1));
     }
     
-    float x = (g.carrier_end - g.carrier_start)/10;
-    float y = (g.modulator_end - g.modulator_start)/10;
-    float z = (g.md_end - g.md_start)/10; // normalized duration
-    position = al::Vec3f(x, y, z);
-    //std::cout << position << std::endl;
+    position = g.position;
   }
   
-  void setPosition(al::Vec3f pos) { position = pos; }
+  // void setPosition(al::Vec3f pos) { position = pos; }
 
   void onProcess(al::AudioIOData& io) override {
     while (io()) {
@@ -220,7 +240,7 @@ struct Grain : al::SynthVoice {
 
   void onProcess(al::Graphics &g) override {
     g.pushMatrix();
-    g.color(1.0, 0.0, 0.0); // TODO: CHANGE COLOR BASED ON HOVER
+    g.color(1.0, 0.0, 0.0); // grain flashes red whenever it plays
     g.translate(position);
     g.scale(duration/MAX_DURATION); // scale based on duration (normalized)
     //g.meshColor();
@@ -231,7 +251,7 @@ struct Grain : al::SynthVoice {
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for grains on-screen
+  al::ParameterInt nGrains{"/number of grains", "", 10, "", 0, MAX_GRAINS}; // user input for grains on-screen
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
 
@@ -258,8 +278,19 @@ struct Granulator {
     voice->set(settings[index]);
   }
 
-  void resetSettings() {
+  void displayGrainSettings(al::Graphics &g) {
+    for (int i = 0; i < nGrains; i++) {
+      g.pushMatrix();
+      g.color(1.0); // TODO: CHANGE COLOR BASED ON HOVER
+      g.translate(settings[i].position);
+      g.scale(settings[i].size); // scale based on duration (normalized)
+      g.draw(settings[i].mesh);  // Draw the mesh
+      g.popMatrix();
+    }
+  }
 
+  void resetSettings() {
+    // whenever the mean or stdv values are changed, reset grain settings
   }
 };
 

@@ -47,6 +47,7 @@ struct MyApp : App {
   void onDraw(Graphics& g) override {
     g.clear(0.2); // background color
     gui.draw(g); // draw GUI
+    granulator.displayGrainSettings(g);
     granulator.polySynth.render(g);  // Call render for PolySynth to generate its output
   }
 
