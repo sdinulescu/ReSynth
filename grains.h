@@ -167,7 +167,7 @@ struct Grain : al::SynthVoice {
 
   Grain() { 
     //al::addCone(mesh);  // Prepare mesh to draw a cone
-    mesh.primitive(al::Mesh::LINE_STRIP); 
+    mesh.primitive(al::Mesh::TRIANGLE_STRIP); 
   }
 
   void set(GrainSettings g) {
@@ -182,6 +182,18 @@ struct Grain : al::SynthVoice {
 
     envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
 
+    //mesh.vertex(position);
+
+    const int N = 100;
+    for (int i = 1; i < N + 1; i++) {
+      float a0 = i * M_PI * 2 / N;
+      float a1 = (i - 1) * M_PI * 2 / N;
+      float r = 0.1;
+      mesh.vertex(0, 0);
+      mesh.vertex(r * sin(a0), r * cos(a0));
+      mesh.vertex(r * sin(a1), r * cos(a1));
+    }
+    
     // float x = g.duration/MAX_DURATION; // normalized duration
     // float y = (g,carrier_end - g.carrier_start)/MAX_FREQUENCY;
     // float z = (g.mod_end - g.mod_start)/MAX_FREQUENCY;
@@ -208,9 +220,10 @@ struct Grain : al::SynthVoice {
 
   void onProcess(al::Graphics &g) override {
     g.pushMatrix();
-    g.color(1.0);
+    g.color(1.0, 0.0, 0.0); // TODO: CHANGE COLOR BASED ON HOVER
     g.translate(position);
-    g.scale(duration); // scale based on duration
+    g.scale(duration/MAX_DURATION); // scale based on duration (normalized)
+    //g.meshColor();
     g.draw(mesh);  // Draw the mesh
     g.popMatrix();
   }
@@ -243,6 +256,10 @@ struct Granulator {
 
   void set(Grain* voice, int index) {
     voice->set(settings[index]);
+  }
+
+  void resetSettings() {
+
   }
 };
 

@@ -34,6 +34,8 @@ struct MyApp : App {
            granulator.envelope << granulator.gain << steps << rate;
 
     timer.freq(rate);
+
+    nav().pos(0, 0, 4);
   }
 
   void onAnimate(double dt) override {
@@ -44,7 +46,7 @@ struct MyApp : App {
 
   void onDraw(Graphics& g) override {
     g.clear(0.2); // background color
-    gui.draw(g);
+    gui.draw(g); // draw GUI
     granulator.polySynth.render(g);  // Call render for PolySynth to generate its output
   }
 
