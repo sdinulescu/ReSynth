@@ -1,7 +1,7 @@
 /* grains.h written by Stejara Dinulescu
  * MAT240B 2021, Final Project
  * This file defines the grain stuct and granulator struct used in granular-resynth.cpp
- * References: granulator-source-material.cpp written by Karl Yerkes
+ * References: granulator-source-material.cpp, frequency-modulation-grains.cpp, Scatter-Sequence.cpp written by Karl Yerkes
  */
 
 # pragma once
@@ -148,8 +148,8 @@ struct GrainSettings {
     carrier_end = al::clip( ((double)al::rnd::normal() / csd) + (double)cm, MAX_FREQUENCY, 0.0);
     modulator_start = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
     modulator_end = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
-    md_start = al::clip((double)al::rnd::normal() + (double)md, 500.0, 0.0);
-    md_end = al::clip((double)al::rnd::normal() + (double)md, 500.0, 0.0);
+    md_start = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
+    md_end = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
   }
 };
 
@@ -162,7 +162,7 @@ struct Grain : al::SynthVoice {
   ExpSeg beta;
   AttackDecay envelope;
 
-  al::Vec3f position = al::Vec3f(al::rnd::uniform(), al::rnd::uniform(), al::rnd::uniform()); 
+  al::Vec3f position; // = al::Vec3f(al::rnd::uniform(), al::rnd::uniform(), al::rnd::uniform()); 
   al::Mesh mesh;
 
   Grain() { 
@@ -182,8 +182,7 @@ struct Grain : al::SynthVoice {
 
     envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
 
-    //mesh.vertex(position);
-
+    // draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
     const int N = 100;
     for (int i = 1; i < N + 1; i++) {
       float a0 = i * M_PI * 2 / N;
@@ -194,10 +193,11 @@ struct Grain : al::SynthVoice {
       mesh.vertex(r * sin(a1), r * cos(a1));
     }
     
-    // float x = g.duration/MAX_DURATION; // normalized duration
-    // float y = (g,carrier_end - g.carrier_start)/MAX_FREQUENCY;
-    // float z = (g.mod_end - g.mod_start)/MAX_FREQUENCY;
-    // position = al::Vec3f(x, y, z);
+    float x = (g.carrier_end - g.carrier_start)/10;
+    float y = (g.modulator_end - g.modulator_start)/10;
+    float z = (g.md_end - g.md_start)/10; // normalized duration
+    position = al::Vec3f(x, y, z);
+    //std::cout << position << std::endl;
   }
   
   void setPosition(al::Vec3f pos) { position = pos; }
@@ -231,7 +231,7 @@ struct Grain : al::SynthVoice {
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 5, "", 0, MAX_GRAINS}; // user input for grains on-screen
+  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for grains on-screen
   al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
   al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
 
