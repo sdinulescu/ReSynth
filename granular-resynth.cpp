@@ -74,7 +74,7 @@ struct MyApp : App {
   bool onMouseDown(const Mouse& m) override {  // adapted from Scatter-Sequence.cpp by Karl Yerkes
     al::Rayd r = getPickRay(m.x(), m.y());
 
-    for (int i = 0; i < granulator.settings.size(); i++) {
+    for (int i = 0; i < granulator.nGrains; i++) {
       float t = r.intersectSphere(granulator.settings[i].position, 0.1);
 
       if (t > 0.0f) {
