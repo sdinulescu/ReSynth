@@ -94,6 +94,7 @@ struct MyApp : App {
         }
 
         if (!found) {
+          granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0);
           sequence.push_back(granulator.settings[i]);
           for (int i = 0; i < sequence.size(); i++) {
             std::cout << sequence[i].position << " ";

@@ -20,7 +20,7 @@ const int BLOCK_SIZE = 2048;
 const int OUTPUT_CHANNELS = 2;
 
 const int MAX_GRAINS = 1000;
-const int MAX_DURATION = 10;
+const int MAX_DURATION = 3;
 const double MAX_FREQUENCY = 4000;
 
 // Line struct taken and adapted from Karl Yerkes' synths.h sample code
@@ -141,13 +141,14 @@ struct GrainSettings {
   al::Vec3f position;
   al::Mesh mesh;
   float size;
+  al::Vec3f color = al::Vec3f(1.0, 1.0, 1.0);
 
   bool hover = false;
 
   GrainSettings() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
 
   void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
-    duration = al::rnd::uniform(1, MAX_DURATION);
+    duration = al::rnd::normal() / 3 + 1.3;
     size = duration/MAX_DURATION;
     modulator_depth = md; 
     envelope = e;
@@ -190,6 +191,7 @@ struct Grain : al::SynthVoice {
 
   al::Mesh mesh;
   al::Vec3f position;
+  al::Vec3f color = al::Vec3f(1.0, 0.0, 0.0);
 
   Grain() { 
     //al::addCone(mesh);  // Prepare mesh to draw a cone
@@ -242,7 +244,7 @@ struct Grain : al::SynthVoice {
 
   void onProcess(al::Graphics &g) override {
     g.pushMatrix();
-    g.color(1.0, 0.0, 0.0); // grain flashes red whenever it plays
+    g.color(color.x, color.y, color.z); // grain flashes red whenever it plays
     g.translate(position);
     g.scale(duration/MAX_DURATION); // scale based on duration (normalized)
     //g.meshColor();
@@ -283,7 +285,7 @@ struct Granulator {
   void displayGrainSettings(al::Graphics &g) {
     for (int i = 0; i < nGrains; i++) {
       g.pushMatrix();
-      g.color(1.0); // TODO: CHANGE COLOR BASED ON HOVER
+      g.color(settings[i].color.x, settings[i].color.y, settings[i].color.z); // TODO: CHANGE COLOR BASED ON HOVER
       g.translate(settings[i].position);
       g.scale(settings[i].size); // scale based on duration (normalized)
       g.draw(settings[i].mesh);  // Draw the mesh
