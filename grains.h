@@ -142,6 +142,8 @@ struct GrainSettings {
   al::Mesh mesh;
   float size;
 
+  bool hover = false;
+
   GrainSettings() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
 
   void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
@@ -274,8 +276,8 @@ struct Granulator {
     polySynth.allocatePolyphony<Grain>(nGrains); //this handles all grains that can happen at once
   } 
 
-  void set(Grain* voice, int index) {
-    voice->set(settings[index]);
+  void set(Grain* voice, GrainSettings settings) {
+    voice->set(settings);
   }
 
   void displayGrainSettings(al::Graphics &g) {
