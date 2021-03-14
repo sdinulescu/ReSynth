@@ -147,7 +147,7 @@ struct GrainSettings {
 
   GrainSettings() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
 
-  void set(float cm, float csd, float mm, float msd, float md, float e, float g) {
+  void set(float cm, float csd, float mm, float msd, float md, float mdsd, float e, float g) {
     duration = al::rnd::normal() / 3 + 1.3;
     size = duration/MAX_DURATION;
     modulator_depth = md; 
@@ -158,8 +158,8 @@ struct GrainSettings {
     carrier_end = al::clip( ((double)al::rnd::normal() / csd) + (double)cm, MAX_FREQUENCY, 0.0);
     modulator_start = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
     modulator_end = al::clip((double)al::rnd::normal() / msd + (double)mm, MAX_FREQUENCY, 0.0);
-    md_start = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
-    md_end = al::clip((double)al::rnd::normal() + (double)md, MAX_FREQUENCY, 0.0);
+    md_start = al::clip((double)al::rnd::normal() / mdsd + (double)md, MAX_FREQUENCY, 0.0);
+    md_end = al::clip((double)al::rnd::normal() / mdsd + (double)md, MAX_FREQUENCY, 0.0);
 
     float x = (carrier_end - carrier_start)/10;
     float y = (modulator_end - modulator_start)/10;
@@ -235,7 +235,7 @@ struct Grain : al::SynthVoice {
       io.out(0) += v;
       io.out(1) += v;
 
-      if (alpha.line.done() || beta.line.done() || envelope.decay.done()) {
+      if (envelope.decay.done()) {
         free();
         break;
       }
@@ -255,16 +255,17 @@ struct Grain : al::SynthVoice {
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 10, "", 0, MAX_GRAINS}; // user input for grains on-screen
-  al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
-  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
+  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for grains on-screen
+  al::Parameter carrier_mean{"/carrier mean", "", 440.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of granulator, in Hz
+  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.2, "", 0.01, 1.0}; // user input for standard deviation frequency value of granulator
 
-  al::Parameter modulator_mean{"/modulator mean", "", 800.0, "", 0.0, 4000.0}; // user input for mean frequency value of granulator, in Hz
-  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.1, 1.0}; // user input for standard deviation frequency value of granulator
-  al::Parameter modulation_depth{"/modulation depth", "", 100.0, "", 0.0, 300.0}; // user input for standard deviation value of granulator
+  al::Parameter modulator_mean{"/modulator mean", "", 2000.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of granulator, in Hz
+  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.2, "", 0.01, 1.0}; // user input for standard deviation frequency value of granulator
+  al::Parameter modulation_depth{"/modulation depth", "", 2000.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for standard deviation value of granulator
+  al::Parameter moddepth_stdv{"/modulation depth standard deviation", "", 0.9, "", 0.01, 1.0}; // user input for standard deviation value of granulator
 
-  al::Parameter envelope{"/envelope", "", 0.1, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
-  al::Parameter gain{"/gain", "", 0.8, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
+  al::Parameter envelope{"/envelope", "", 0.5, "", 0.01, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
+  al::Parameter gain{"/gain", "", 0.5, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
 
   al::PolySynth polySynth; 
   std::vector<GrainSettings> settings;
@@ -272,7 +273,7 @@ struct Granulator {
   Granulator() { 
     for (int i = 0; i < MAX_GRAINS; i++) { // push back all of the different settings for MAX_GRAINS at the start of the program
       GrainSettings g;
-      g.set(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, envelope, gain);
+      g.set(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, moddepth_stdv, envelope, gain);
       settings.push_back(g);
     }
     polySynth.allocatePolyphony<Grain>(nGrains); //this handles all grains that can happen at once
@@ -294,7 +295,10 @@ struct Granulator {
   }
 
   void resetSettings() {
-    // whenever the mean or stdv values are changed, reset grain settings
+    // whenever the user hits the spacebar, reset grain settings based on the new slider parameters
+    for (int i = 0; i < MAX_GRAINS; i++) {
+      settings[i].set(carrier_mean, carrier_stdv, modulator_mean, modulator_stdv, modulation_depth, moddepth_stdv, envelope, gain);
+    }
   }
 };
 

@@ -31,13 +31,15 @@ struct MyApp : App {
 
   void onCreate() override {
     gui.init();
-    gui << granulator.nGrains << granulator.carrier_mean << granulator.carrier_stdv << 
-           granulator.modulator_mean << granulator.modulator_stdv << granulator.modulation_depth << 
-           granulator.envelope << granulator.gain << rate;
+    gui << granulator.gain << granulator.nGrains << 
+           granulator.carrier_mean << granulator.carrier_stdv << 
+           granulator.modulator_mean << granulator.modulator_stdv << 
+           granulator.modulation_depth << granulator.moddepth_stdv <<
+           granulator.envelope << rate;
 
     timer.freq(rate);
 
-    nav().pos(0, 0, 4);
+    nav().pos(0, 0, 10);
   }
 
   void onAnimate(double dt) override {
@@ -126,6 +128,14 @@ struct MyApp : App {
     return true;
   }
 
+  virtual bool onKeyDown(const Keyboard &k) override {
+    if (k.key() == ' ') {
+      granulator.resetSettings();
+      std::cout << "key down" << std::endl;
+    }
+    return true;
+  }
+
   void onDraw(Graphics& g) override {
     g.clear(0.2); // background color
     gui.draw(g); // draw GUI
@@ -155,8 +165,8 @@ struct MyApp : App {
         }
       }
 
-      io.out(0) *= granulator.gain;
-      io.out(1) *= granulator.gain;
+      io.out(0) = tanh(io.out(0) * granulator.gain);
+      io.out(1) = tanh(io.out(1) * granulator.gain);
     }
   }
 };
