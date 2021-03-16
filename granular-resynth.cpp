@@ -1,7 +1,9 @@
 /* granular-resynth.cpp written by Stejara Dinulescu
  * MAT240B 2021, Final Project
  * This file is the main file for this allolib project. 
- * References: granulator-source-material.cpp written by Karl Yerkes
+ * References: granulator-source-material.cpp, synths.h, Scatter-Sequence.cpp, frequency-modulation-grains.cpp written by Karl Yerkes
+ *             various max patches showing FM synth
+ *             PickRay examples, GUI examples (for parameter usage), and Gamma oscillator files were referenced from allolib
  */
 
 #include "al/app/al_App.hpp"
@@ -16,13 +18,12 @@
 using namespace al;
 
 struct MyApp : App {
-  ControlGUI gui; 
+  ControlGUI gui; // gui
   Granulator granulator; // handles grains
   //Sequencer sequencer; // handles sequence
   std::mutex mutex; // mutex for audio callback
 
-  //al::ParameterInt steps{"/sequencer steps", "", 4, "", 0, 10}; // user input for number of "beats" in the sequencer (can think of sequencer as a measure)
-  al::Parameter rate{"/sequencer rate", "", 1.0, "", 0.1, 10.0}; // user input for mean frequency value of granulator, in Hz
+  al::Parameter rate{"/sequencer rate", "", 1.0, "", -30.0, 50.0}; // user input for rate of sequencer
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
   std::vector<GrainSettings> sequence;
@@ -37,9 +38,9 @@ struct MyApp : App {
            granulator.modulation_depth << granulator.moddepth_stdv <<
            granulator.envelope << rate;
 
-    timer.freq(rate);
+    timer.freq(rate); // set the timer's frequency to the specified rate
 
-    nav().pos(0, 0, 10);
+    nav().pos(0, 0, 25);
   }
 
   void onAnimate(double dt) override {
@@ -173,7 +174,7 @@ struct MyApp : App {
 
 int main() {
   MyApp app;
-  app.dimensions(800, 600);
+  app.dimensions(1000, 700);
   app.configureAudio(SAMPLE_RATE, 768, OUTPUT_CHANNELS);
   app.start();
 }
