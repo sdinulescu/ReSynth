@@ -1,0 +1,69 @@
+/* sequence.h written by Stejara Dinulescu
+ * MAT240B 2021, Final Project
+ * This file defines the Sequencer stuct used in granular-resynth.cpp
+ * References: granulator-source-material.cpp, frequency-modulation-grains.cpp, Scatter-Sequence.cpp written by Karl Yerkes
+ */
+
+# pragma once
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include "al/ui/al_Parameter.hpp"
+#include "al/math/al_Random.hpp"  // rnd::uniform()
+#include "Gamma/Oscillator.h"
+#include "al/math/al_Functions.hpp"  // al::clip
+#include "grains.h"
+
+const int NUM_SEQUENCERS = 3;
+
+struct Sequencer {
+  al::Parameter rate{"/sequencer rate", "", 1.0, "", -30.0, 50.0}; // user input for rate of sequencer // TODO GIVE UNIQUE NAME
+  gam::Accum<> timer; // rate timer
+  int playhead = 0; // where we are in the sequencer
+  std::vector<GrainSettings> sequence;
+  bool active = false;
+  int id = -1;
+
+  Sequencer() { timer.freq(rate); }
+
+  void setID(int _id) { id = _id; }
+  void setTimer() {  if (timer.freq() != rate) timer.freq(rate); } // set the timer's frequency to the specified rate, also acts as a reset if rate changes
+  void setTimer(float r) {  timer.freq(r); rate = r; } // parameter passed into function, just in case this is needed
+  
+  GrainSettings grabSample() { return sequence[playhead]; }
+  void addSample(GrainSettings g) { sequence.push_back(g); printSamples(); }
+
+  void increment() { 
+    playhead++; // increment playhead
+    if (playhead >= sequence.size()) { // reset if need be
+      playhead -= sequence.size();
+      if (playhead < 0) { playhead = 0; } // bounds check
+    }
+  }
+
+  bool checkIntersection(al::Vec3f pos) {
+    bool found = false;
+    for (auto iterator = sequence.begin(); iterator != sequence.end();) {
+      if (iterator->position == pos) {
+        found = true;
+        // actually, this would erase ALL the copies of point[i] in sequence.
+        sequence.erase(iterator);
+      } else {
+        ++iterator;  // only advance the iterator when we don't erase
+      }
+    }
+    return found;
+  }
+
+  void printSamples() {
+    for (int i = 0; i < sequence.size(); i++) {
+      std::cout << sequence[i].position << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  void enable() { active = true; std::cout << "sequencer " << id << " enabled! " << std::endl; }
+  void disable() { active = false; std::cout << "sequencer " << id << " disabled! " << std::endl; }
+  
+};

@@ -13,7 +13,7 @@
 #include "al/ui/al_PresetServer.hpp"
 #include "al/math/al_Ray.hpp" // Ray
 #include "grains.h"
-//#include "sequence.h"
+#include "sequence.h"
 
 using namespace al;
 
@@ -21,12 +21,8 @@ struct MyApp : App {
   ControlGUI gui; // gui
   Granulator granulator; // handles grains
   //Sequencer sequencer; // handles sequence
+  std::vector<Sequencer> sequencers;
   std::mutex mutex; // mutex for audio callback
-
-  al::Parameter rate{"/sequencer rate", "", 1.0, "", -30.0, 50.0}; // user input for rate of sequencer
-  gam::Accum<> timer; // rate timer
-  int playhead = 0; // where we are in the sequencer
-  std::vector<GrainSettings> sequence;
 
   MyApp() {} // this is called from the main thread
 
@@ -36,17 +32,25 @@ struct MyApp : App {
            granulator.carrier_mean << granulator.carrier_stdv << 
            granulator.modulator_mean << granulator.modulator_stdv << 
            granulator.modulation_depth << granulator.moddepth_stdv <<
-           granulator.envelope << rate;
-
-    timer.freq(rate); // set the timer's frequency to the specified rate
-
+           granulator.envelope;
+           
+    for (int i = 0; i < NUM_SEQUENCERS; i++) {  // init sequencers
+      Sequencer s; 
+      s.setID(i);
+      sequencers.push_back(s); 
+    } 
+    
+    for (int i = 0; i < NUM_SEQUENCERS; i++) { gui << sequencers[i].rate; } // add their rates to the GUI
+    
     nav().pos(0, 0, 25);
   }
 
   void onAnimate(double dt) override {
     navControl().active(!gui.usingInput());
 
-    if (timer.freq() != rate) {timer.freq(rate);} // reset the timer rate if it changes
+    for (int i = 0; i < NUM_SEQUENCERS; i++) {
+      sequencers[i].setTimer();
+    }
   }
 
   Vec3d unproject(Vec3d screenPos) { // copied from Scatter-Sequence.cpp by Karl Yerkes
@@ -81,33 +85,22 @@ struct MyApp : App {
       float t = r.intersectSphere(granulator.settings[i].position, 0.1);
 
       if (t > 0.0f) {
-        mutex.lock();  // blocks
+        mutex.lock();
+        for (int j = 0; j < NUM_SEQUENCERS; j++) {
+          if (sequencers[j].active) {
+            bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
 
-        bool found = false;
-        for (auto iterator = sequence.begin(); iterator != sequence.end();) {
-          if (iterator->position == granulator.settings[i].position) {
-            found = true;
-
-            // actually, this would erase ALL the copies of point[i] in
-            // sequence.
-            sequence.erase(iterator);
-          } else {
-            ++iterator;  // only advance the iterator when we don't erase
+            if (!found) {
+              granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0);
+              sequencers[j].addSample(granulator.settings[i]);
+              sequencers[j].printSamples();
+              mutex.unlock();
+              break;
+            }
           }
         }
-
-        if (!found) {
-          granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0);
-          sequence.push_back(granulator.settings[i]);
-          for (int i = 0; i < sequence.size(); i++) {
-            std::cout << sequence[i].position << " ";
-          }
-          std::cout << std::endl;
-          mutex.unlock();
-          break;
-        }
-
-        mutex.unlock();
+        
+        //mutex.unlock(); // unblocks
       }
     }
     return true;
@@ -132,8 +125,15 @@ struct MyApp : App {
   virtual bool onKeyDown(const Keyboard &k) override {
     if (k.key() == ' ') {
       granulator.resetSettings();
-      std::cout << "key down" << std::endl;
+      std::cout << "space" << std::endl;
+    } else {
+      for (int i = 0; i < sequencers.size(); i++) {
+        std::cout << k.key() - 48 << " " << i << std::endl;
+        if (k.key() - 48 == i) { sequencers[i].enable(); }
+        else { sequencers[i].disable(); }
+      }
     }
+    
     return true;
   }
 
@@ -149,20 +149,18 @@ struct MyApp : App {
     io.frame(0); // reset the frame so we can go over the frame again below
 
     while (io()) {
-      if (timer()) {
-        if (mutex.try_lock()) {
-          if (sequence.size() > 0) { // if there is something in the sequence
-            auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-            granulator.set(voice, sequence[playhead]); // set properties of the voice -> taken from settings[playhead index]
-            granulator.polySynth.triggerOn(voice); //trigger it on
+      for (int i = 0; i < NUM_SEQUENCERS; i++) {
+        if (sequencers[i].timer()) {
+          if (mutex.try_lock()) {
+            if (sequencers[i].sequence.size() > 0) { // if there is something in the sequence
+              auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
+              granulator.set(voice, sequencers[i].grabSample()); // set properties of the voice -> taken from settings[playhead index]
+              granulator.polySynth.triggerOn(voice); //trigger it on
 
-            playhead++; // increment the playhead
-            if (playhead >= sequence.size()) {
-              playhead -= sequence.size();
-              if (playhead < 0) { playhead = 0; }
+              sequencers[i].increment();
             }
+            mutex.unlock();
           }
-          mutex.unlock();
         }
       }
 
