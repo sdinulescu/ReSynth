@@ -184,7 +184,8 @@ struct Grain : al::SynthVoice {
     //   mesh.vertex(r * sin(a1), r * cos(a1), 0);
     //   // TO DO : MAKE THIS A 3D SPHERE
     // }
-    al::addSphere(mesh, g.size);
+    al::addSphere(mesh, 0.1); // should the second parameter be g.size?
+    mesh.generateNormals();
     
     position = g.position;
   }
