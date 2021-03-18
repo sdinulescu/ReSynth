@@ -174,17 +174,17 @@ struct Grain : al::SynthVoice {
     envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
 
     //draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
-    const int N = 100;
-    for (int i = 1; i < N + 1; i++) {
-      float a0 = i * M_PI * 2 / N;
-      float a1 = (i - 1) * M_PI * 2 / N;
-      float r = 0.1;
-      mesh.vertex(0, 0, 0);
-      mesh.vertex(r * sin(a0), r * cos(a0), 0);
-      mesh.vertex(r * sin(a1), r * cos(a1), 0);
-      // TO DO : MAKE THIS A 3D SPHERE
-    }
-    //al::addSphere(mesh, g.size);
+    // const int N = 100;
+    // for (int i = 1; i < N + 1; i++) {
+    //   float a0 = i * M_PI * 2 / N;
+    //   float a1 = (i - 1) * M_PI * 2 / N;
+    //   float r = 0.1;
+    //   mesh.vertex(0, 0, 0);
+    //   mesh.vertex(r * sin(a0), r * cos(a0), 0);
+    //   mesh.vertex(r * sin(a1), r * cos(a1), 0);
+    //   // TO DO : MAKE THIS A 3D SPHERE
+    // }
+    al::addSphere(mesh, g.size);
     
     position = g.position;
   }
