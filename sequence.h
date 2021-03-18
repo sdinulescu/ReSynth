@@ -16,18 +16,19 @@
 #include "grains.h"
 
 const int NUM_SEQUENCERS = 3;
+int count_id = 0; 
 
 struct Sequencer {
-  al::Parameter rate{"/sequencer rate", "", 1.0, "", -30.0, 50.0}; // user input for rate of sequencer // TODO GIVE UNIQUE NAME
+  int id = count_id; 
+  al::Parameter rate{"/sequencer rate " + std::to_string(id), "", (float)al::rnd::uniform(-1.0, 1.0), "", -30.0, 50.0};  // user input for rate of sequencer // TODO GIVE UNIQUE NAME
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
   std::vector<GrainSettings> sequence;
   bool active = false;
-  int id = -1;
+  
 
-  Sequencer() { timer.freq(rate); }
+  Sequencer() { timer.freq(rate); count_id += 1;}
 
-  void setID(int _id) { id = _id; }
   void setTimer() {  if (timer.freq() != rate) timer.freq(rate); } // set the timer's frequency to the specified rate, also acts as a reset if rate changes
   void setTimer(float r) {  timer.freq(r); rate = r; } // parameter passed into function, just in case this is needed
   

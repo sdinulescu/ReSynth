@@ -36,7 +36,6 @@ struct MyApp : App {
            
     for (int i = 0; i < NUM_SEQUENCERS; i++) {  // init sequencers
       Sequencer s; 
-      s.setID(i);
       sequencers.push_back(s); 
     } 
     
