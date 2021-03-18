@@ -92,7 +92,7 @@ struct MyApp : App {
             if (!found) {
               granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0);
               sequencers[j].addSample(granulator.settings[i]);
-              sequencers[j].printSamples();
+              //sequencers[j].printSamples();
               mutex.unlock();
               break;
             }
@@ -127,7 +127,7 @@ struct MyApp : App {
       std::cout << "space" << std::endl;
     } else {
       for (int i = 0; i < sequencers.size(); i++) {
-        std::cout << k.key() - 48 << " " << i << std::endl;
+        //std::cout << k.key() - 48 << " " << i << std::endl;
         if (k.key() - 48 == i) { sequencers[i].enable(); }
         else { sequencers[i].disable(); }
       }
