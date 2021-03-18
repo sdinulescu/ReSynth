@@ -12,6 +12,8 @@
 #include "al/ui/al_PresetHandler.hpp"
 #include "al/ui/al_PresetServer.hpp"
 #include "al/math/al_Ray.hpp" // Ray
+#include "al/graphics/al_Shapes.hpp"
+#include "al/math/al_Random.hpp"
 #include "grains.h"
 #include "sequence.h"
 
@@ -99,7 +101,7 @@ struct MyApp : App {
           }
         }
         
-        //mutex.unlock(); // unblocks
+        mutex.unlock(); // unblocks
       }
     }
     return true;
