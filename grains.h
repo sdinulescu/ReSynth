@@ -253,7 +253,7 @@ struct Granulator {
     for (int i = 0; i < nGrains; i++) {
       g.pushMatrix();
       g.translate(settings[i].position);
-      g.scale(settings[i].size); // scale based on duration (normalized)
+      g.scale(settings[i].size * 0.99); // scale based on duration (normalized)
       g.color(settings[i].color.x, settings[i].color.y, settings[i].color.z);
       g.draw(settings[i].mesh);  // Draw the mesh
       g.popMatrix();
