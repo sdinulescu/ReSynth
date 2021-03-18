@@ -21,7 +21,7 @@ const int BLOCK_SIZE = 2048;
 const int OUTPUT_CHANNELS = 2;
 
 const int MAX_GRAINS = 1000;
-const int MAX_DURATION = 10;
+const int MAX_DURATION = 1.0;
 const double MAX_FREQUENCY = 127;
 
 // SOME METHODS
@@ -114,8 +114,8 @@ struct GrainSettings {
   GrainSettings() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
 
   void set(float cm, float csd, float mm, float msd, float md, float mdsd, float e, float g) {
-    duration = al::rnd::uniform(0.1, 5.0); // / MAX_DURATION + 3.0; // 3.0 is mean duration in seconds
-    size = map(duration, 0.0, 10.0, 0.5, 3.0);
+    duration = al::rnd::uniform(0.01, double(MAX_DURATION)); //one second
+    size = map(duration, 0.01, double(MAX_DURATION), 0.5, 5.0);
     modulator_depth = md; 
     envelope = e;
     gain = g;
@@ -131,7 +131,7 @@ struct GrainSettings {
     float y = map((modulator_end - modulator_start), -127.0, 354.0, -2.0, 2.0);
     float z = map((md_end - md_start), -127.0, 354.0, -2.0, 2.0); 
     position = al::Vec3f(x, y, z);
-    std::cout << position << std::endl;
+    //std::cout << position << std::endl;
 
     // draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
     // const int N = 100;

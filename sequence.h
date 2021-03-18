@@ -20,14 +20,22 @@ int count_id = 0;
 
 struct Sequencer {
   int id = count_id; 
-  al::Parameter rate{"/sequencer rate " + std::to_string(id), "", (float)al::rnd::uniform(-1.0, 1.0), "", -30.0, 50.0};  // user input for rate of sequencer // TODO GIVE UNIQUE NAME
+  al::Parameter rate{"/sequencer rate " + std::to_string(id), "", (float)al::rnd::uniform(0.1, 1.0), "", -30.0, 50.0};  // user input for rate of sequencer // TODO GIVE UNIQUE NAME
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
   std::vector<GrainSettings> sequence;
   bool active = false;
-  
+  al::Vec3f color;
 
-  Sequencer() { timer.freq(rate); count_id += 1;}
+  Sequencer() { 
+    timer.freq(rate); 
+    if (id == 0) {color = al::Vec3f(0, 0, 1);} // blue
+    else if (id == 1) {color = al::Vec3f(0, 1, 0);} // green 
+    else if (id == 2) {color = al::Vec3f(1, 1, 0);} // yellow
+    count_id += 1; 
+  }
+
+  void sayName() {std::cout << "i am sequence " << id << " " << active << std::endl;}
 
   void setTimer() {  if (timer.freq() != rate) timer.freq(rate); } // set the timer's frequency to the specified rate, also acts as a reset if rate changes
   void setTimer(float r) {  timer.freq(r); rate = r; } // parameter passed into function, just in case this is needed
@@ -64,7 +72,7 @@ struct Sequencer {
     std::cout << std::endl;
   }
 
-  void enable() { active = true; std::cout << "sequencer " << id << " enabled! " << std::endl; }
-  void disable() { active = false; std::cout << "sequencer " << id << " disabled! " << std::endl; }
+  void enable() { active = true; }
+  void disable() { active = false; }
   
 };

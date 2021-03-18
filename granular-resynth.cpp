@@ -87,25 +87,26 @@ struct MyApp : App {
     al::Rayd r = getPickRay(m.x(), m.y());
 
     for (int i = 0; i < granulator.nGrains; i++) {
-      float t = r.intersectSphere(granulator.settings[i].position, 0.1);
+      float t = r.intersectSphere(granulator.settings[i].position, 0.2);
 
       if (t > 0.0f) {
-        mutex.lock();
-        for (int j = 0; j < NUM_SEQUENCERS; j++) {
-          if (sequencers[j].active) {
-            bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
+        //if(mutex.try_lock()) {
+          for (int j = 0; j < NUM_SEQUENCERS; j++) {
+            //sequencers[j].sayName();
+            if (sequencers[j].active) {
+              bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
 
-            if (!found) {
-              granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0); // turn it blue
-              sequencers[j].addSample(granulator.settings[i]);
-              //sequencers[j].printSamples();
-              mutex.unlock();
-              break;
+              if (!found) {
+                granulator.settings[i].color = sequencers[j].color; // turn it whatever color is assigned to the sequencer
+                sequencers[j].addSample(granulator.settings[i]);
+                //sequencers[j].printSamples();
+                break;
+              } else { granulator.settings[i].color = al::Vec3f(1.0, 1.0, 1.0); } // turn it white again 
             }
           }
-        }
         
-        mutex.unlock(); // unblocks
+          //mutex.unlock(); // unblocks
+        //}
       }
     }
     return true;
@@ -130,7 +131,7 @@ struct MyApp : App {
   virtual bool onKeyDown(const Keyboard &k) override {
     if (k.key() == ' ') {
       granulator.resetSettings();
-      std::cout << "space" << std::endl;
+      //std::cout << "space" << std::endl;
     } else {
       for (int i = 0; i < sequencers.size(); i++) {
         //std::cout << k.key() - 48 << " " << i << std::endl;
