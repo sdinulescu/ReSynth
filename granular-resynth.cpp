@@ -26,6 +26,8 @@ struct MyApp : App {
   std::vector<Sequencer> sequencers;
   std::mutex mutex; // mutex for audio callback
 
+  al::Light light;
+
   MyApp() {} // this is called from the main thread
 
   void onCreate() override {
@@ -44,6 +46,8 @@ struct MyApp : App {
     for (int i = 0; i < NUM_SEQUENCERS; i++) { gui << sequencers[i].rate; } // add their rates to the GUI
     
     nav().pos(0, 0, 25);
+    light.pos(0, 0, 25);
+    light.diffuse();
   }
 
   void onAnimate(double dt) override {
@@ -92,7 +96,7 @@ struct MyApp : App {
             bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
 
             if (!found) {
-              granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0);
+              granulator.settings[i].color = al::Vec3f(0.0, 0.0, 1.0); // turn it blue
               sequencers[j].addSample(granulator.settings[i]);
               //sequencers[j].printSamples();
               mutex.unlock();
@@ -139,8 +143,9 @@ struct MyApp : App {
   }
 
   void onDraw(Graphics& g) override {
-    g.clear(0.2); // background color
-    gl::depthTesting(true);
+    g.clear(0.1); // background color
+    gl::depthTesting(true); // if this is enabled, color disappears
+    g.lighting(true);
     gui.draw(g); // draw GUI
     granulator.displayGrainSettings(g);
     granulator.polySynth.render(g);  // Call render for PolySynth to generate its output

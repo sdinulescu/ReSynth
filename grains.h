@@ -134,15 +134,17 @@ struct GrainSettings {
     std::cout << position << std::endl;
 
     // draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
-    const int N = 100;
-    for (int i = 1; i < N + 1; i++) {
-      float a0 = i * M_PI * 2 / N;
-      float a1 = (i - 1) * M_PI * 2 / N;
-      float r = 0.1;
-      mesh.vertex(0, 0);
-      mesh.vertex(r * sin(a0), r * cos(a0));
-      mesh.vertex(r * sin(a1), r * cos(a1));
-    }
+    // const int N = 100;
+    // for (int i = 1; i < N + 1; i++) {
+    //   float a0 = i * M_PI * 2 / N;
+    //   float a1 = (i - 1) * M_PI * 2 / N;
+    //   float r = 0.1;
+    //   mesh.vertex(0, 0);
+    //   mesh.vertex(r * sin(a0), r * cos(a0));
+    //   mesh.vertex(r * sin(a1), r * cos(a1));
+    // }
+    al::addSphere(mesh, 0.1);
+    mesh.generateNormals();
   }
 };
 
@@ -208,9 +210,10 @@ struct Grain : al::SynthVoice {
 
   void onProcess(al::Graphics &g) override { // graphics thread
     g.pushMatrix();
-    g.color(color.x, color.y, color.z); // grain flashes red whenever it plays
+    //std::cout << color.x << " " << color.y << " " << color.z << std::endl;
     g.translate(position);
     g.scale(size); // scale based on duration (normalized)
+    g.color(color.x, color.y, color.z); // grain flashes red whenever it plays
     g.draw(mesh);  // Draw the mesh
     g.popMatrix();
   }
@@ -249,9 +252,9 @@ struct Granulator {
   void displayGrainSettings(al::Graphics &g) {
     for (int i = 0; i < nGrains; i++) {
       g.pushMatrix();
-      g.color(settings[i].color.x, settings[i].color.y, settings[i].color.z);
       g.translate(settings[i].position);
       g.scale(settings[i].size); // scale based on duration (normalized)
+      g.color(settings[i].color.x, settings[i].color.y, settings[i].color.z);
       g.draw(settings[i].mesh);  // Draw the mesh
       g.popMatrix();
     }
