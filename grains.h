@@ -130,7 +130,7 @@ struct GrainSettings {
     float x = map((carrier_end - carrier_start), -127.0, 354.0, -2.0, 2.0);
     float y = map((modulator_end - modulator_start), -127.0, 354.0, -2.0, 2.0);
     float z = map((md_end - md_start), -127.0, 354.0, -2.0, 2.0); 
-    position = al::Vec3f(x, y, z);
+    position = al::Vec3f(x + 2.0, y, z);
     al::addSphere(mesh, 0.1);
     mesh.generateNormals();
   }

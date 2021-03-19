@@ -179,7 +179,7 @@ struct MyApp : App {
 
 int main() {
   MyApp app;
-  app.dimensions(1000, 700);
+  app.dimensions(1400, 800);
   app.configureAudio(SAMPLE_RATE, 768, OUTPUT_CHANNELS);
   app.start();
 }
