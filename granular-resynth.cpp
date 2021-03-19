@@ -133,7 +133,7 @@ struct MyApp : App {
       granulator.resetSettings();
     } else {
       for (int i = 0; i < sequencers.size(); i++) {
-        if (k.key() - 48 == i) { sequencers[i].enable(); }
+        if (k.key() - 48 - 1 == i) { sequencers[i].enable(); }
         else { sequencers[i].disable(); }
       }
     }
