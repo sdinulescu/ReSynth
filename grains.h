@@ -131,18 +131,6 @@ struct GrainSettings {
     float y = map((modulator_end - modulator_start), -127.0, 354.0, -2.0, 2.0);
     float z = map((md_end - md_start), -127.0, 354.0, -2.0, 2.0); 
     position = al::Vec3f(x, y, z);
-    //std::cout << position << std::endl;
-
-    // draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
-    // const int N = 100;
-    // for (int i = 1; i < N + 1; i++) {
-    //   float a0 = i * M_PI * 2 / N;
-    //   float a1 = (i - 1) * M_PI * 2 / N;
-    //   float r = 0.1;
-    //   mesh.vertex(0, 0);
-    //   mesh.vertex(r * sin(a0), r * cos(a0));
-    //   mesh.vertex(r * sin(a1), r * cos(a1));
-    // }
     al::addSphere(mesh, 0.1);
     mesh.generateNormals();
   }
@@ -175,20 +163,8 @@ struct Grain : al::SynthVoice {
 
     envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
 
-    //draw circle, taken from Scatter-Sequence.cpp by Karl Yerkes
-    // const int N = 100;
-    // for (int i = 1; i < N + 1; i++) {
-    //   float a0 = i * M_PI * 2 / N;
-    //   float a1 = (i - 1) * M_PI * 2 / N;
-    //   float r = 0.1;
-    //   mesh.vertex(0, 0, 0);
-    //   mesh.vertex(r * sin(a0), r * cos(a0), 0);
-    //   mesh.vertex(r * sin(a1), r * cos(a1), 0);
-    //   // TO DO : MAKE THIS A 3D SPHERE
-    // }
-    al::addSphere(mesh, 0.1); // should the second parameter be g.size?
+    al::addSphere(mesh, 0.1);
     mesh.generateNormals();
-    
     position = g.position;
   }
 
@@ -210,7 +186,6 @@ struct Grain : al::SynthVoice {
 
   void onProcess(al::Graphics &g) override { // graphics thread
     g.pushMatrix();
-    //std::cout << color.x << " " << color.y << " " << color.z << std::endl;
     g.translate(position);
     g.scale(size); // scale based on duration (normalized)
     g.color(color.x, color.y, color.z); // grain flashes red whenever it plays
@@ -221,15 +196,13 @@ struct Grain : al::SynthVoice {
 
 struct Granulator {
   // GUI accessible parameters
-  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for grains on-screen
-  al::Parameter carrier_mean{"/carrier mean", "", 40.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of granulator, in Hz
-  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.07, "", 0.01, 1.0}; // user input for standard deviation frequency value of granulator
-
-  al::Parameter modulator_mean{"/modulator mean", "", 80.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of granulator, in Hz
-  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.34, "", 0.01, 1.0}; // user input for standard deviation frequency value of granulator
-  al::Parameter modulation_depth{"/modulation depth", "", 20.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for standard deviation value of granulator
-  al::Parameter moddepth_stdv{"/modulation depth standard deviation", "", 0.07, "", 0.01, 1.0}; // user input for standard deviation value of granulator
-
+  al::ParameterInt nGrains{"/number of grains", "", 100, "", 0, MAX_GRAINS}; // user input for number of grains on-screen
+  al::Parameter carrier_mean{"/carrier mean", "", 40.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of carrier, in midi
+  al::Parameter carrier_stdv{"/carrier standard deviation", "", 0.07, "", 0.01, 1.0}; // user input for standard deviation of carrier
+  al::Parameter modulator_mean{"/modulator mean", "", 80.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean frequency value of modulator, in midi
+  al::Parameter modulator_stdv{"/modulator standard deviation", "", 0.34, "", 0.01, 1.0}; // user input for standard deviation frequency value of modulator
+  al::Parameter modulation_depth{"/modulation depth mean", "", 20.0, "", 0.0, (float)MAX_FREQUENCY}; // user input for mean value of modulation depth
+  al::Parameter moddepth_stdv{"/modulation depth standard deviation", "", 0.07, "", 0.01, 1.0}; // user input for standard deviation value of modulation depth
   al::Parameter envelope{"/envelope", "", 0.5, "", 0.01, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
   al::Parameter gain{"/gain", "", 0.5, "", 0.0, 1.0}; // user input for volume of the playing program. starts at 0 for no sound.
 

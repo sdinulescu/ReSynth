@@ -16,29 +16,29 @@
 #include "grains.h"
 
 const int NUM_SEQUENCERS = 3;
-int count_id = 0; 
+int count_id = 0; // keeps track of how many sequencers have already been added to give the sequencer a unique id (and parameter name)
 
 struct Sequencer {
   int id = count_id; 
-  al::Parameter rate{"/sequencer rate " + std::to_string(id), "", (float)al::rnd::uniform(0.1, 1.0), "", -30.0, 50.0};  // user input for rate of sequencer // TODO GIVE UNIQUE NAME
+  al::Parameter rate{"/sequencer rate " + std::to_string(id), "", (float)al::rnd::uniform(0.1, 1.0), "", -30.0, 50.0};  // user input for rate of sequencer
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
-  std::vector<GrainSettings> sequence;
-  bool active = false;
-  al::Vec3f color;
+  std::vector<GrainSettings> sequence; // stores the grain settings
+  bool active = false; // whether the sequencer is active for adding/removing grains
+  al::Vec3f color; // each sequencer has a unique color
 
   Sequencer() { 
-    timer.freq(rate); 
+    timer.freq(rate); // set the timer
     if (id == 0) {color = al::Vec3f(0, 0, 1);} // blue
     else if (id == 1) {color = al::Vec3f(0, 1, 0);} // green 
     else if (id == 2) {color = al::Vec3f(1, 1, 0);} // yellow
     count_id += 1; 
   }
 
-  void sayName() {std::cout << "i am sequence " << id << " " << active << std::endl;}
+  void enable() { active = true; }
+  void disable() { active = false; }
 
   void setTimer() {  if (timer.freq() != rate) timer.freq(rate); } // set the timer's frequency to the specified rate, also acts as a reset if rate changes
-  void setTimer(float r) {  timer.freq(r); rate = r; } // parameter passed into function, just in case this is needed
   
   GrainSettings grabSample() { return sequence[playhead]; }
   void addSample(GrainSettings g) { sequence.push_back(g); printSamples(); }
@@ -51,13 +51,12 @@ struct Sequencer {
     }
   }
 
-  bool checkIntersection(al::Vec3f pos) {
+  bool checkIntersection(al::Vec3f pos) { // for when using the mouse to select grains
     bool found = false;
     for (auto iterator = sequence.begin(); iterator != sequence.end();) {
       if (iterator->position == pos) {
         found = true;
-        // actually, this would erase ALL the copies of point[i] in sequence.
-        sequence.erase(iterator);
+        sequence.erase(iterator); // erases all the copies in the sequence
       } else {
         ++iterator;  // only advance the iterator when we don't erase
       }
@@ -65,14 +64,12 @@ struct Sequencer {
     return found;
   }
 
+  // debugging purposes
+  void sayName() {std::cout << "i am sequence " << id << " " << active << std::endl;} 
   void printSamples() {
     for (int i = 0; i < sequence.size(); i++) {
       std::cout << sequence[i].position << " ";
     }
     std::cout << std::endl;
   }
-
-  void enable() { active = true; }
-  void disable() { active = false; }
-  
 };

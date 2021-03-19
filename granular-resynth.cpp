@@ -16,19 +16,19 @@
 #include "al/math/al_Random.hpp"
 #include "grains.h"
 #include "sequence.h"
+#include "buffer.h"
 
 using namespace al;
 
 struct MyApp : App {
   ControlGUI gui; // gui
   Granulator granulator; // handles grains
-  //Sequencer sequencer; // handles sequence
   std::vector<Sequencer> sequencers;
   std::mutex mutex; // mutex for audio callback
+  al::Light light; // light source for shading
+  Buffer recorder;
 
-  al::Light light;
-
-  MyApp() {} // this is called from the main thread
+  MyApp() {}
 
   void onCreate() override {
     gui.init();
@@ -36,7 +36,7 @@ struct MyApp : App {
            granulator.carrier_mean << granulator.carrier_stdv << 
            granulator.modulator_mean << granulator.modulator_stdv << 
            granulator.modulation_depth << granulator.moddepth_stdv <<
-           granulator.envelope;
+           granulator.envelope; 
            
     for (int i = 0; i < NUM_SEQUENCERS; i++) {  // init sequencers
       Sequencer s; 
@@ -54,7 +54,7 @@ struct MyApp : App {
     navControl().active(!gui.usingInput());
 
     for (int i = 0; i < NUM_SEQUENCERS; i++) {
-      sequencers[i].setTimer();
+      sequencers[i].setTimer(); // check if timers need to be reset
     }
   }
 
@@ -131,10 +131,8 @@ struct MyApp : App {
   virtual bool onKeyDown(const Keyboard &k) override {
     if (k.key() == ' ') {
       granulator.resetSettings();
-      //std::cout << "space" << std::endl;
     } else {
       for (int i = 0; i < sequencers.size(); i++) {
-        //std::cout << k.key() - 48 << " " << i << std::endl;
         if (k.key() - 48 == i) { sequencers[i].enable(); }
         else { sequencers[i].disable(); }
       }
@@ -145,11 +143,11 @@ struct MyApp : App {
 
   void onDraw(Graphics& g) override {
     g.clear(0.1); // background color
-    gl::depthTesting(true); // if this is enabled, color disappears
+    gl::depthTesting(true);
     g.lighting(true);
     gui.draw(g); // draw GUI
-    granulator.displayGrainSettings(g);
-    granulator.polySynth.render(g);  // Call render for PolySynth to generate its output
+    granulator.displayGrainSettings(g); // render all the grain settings
+    granulator.polySynth.render(g);  // call render for PolySynth to generate its output
   }
 
   void onSound(AudioIOData& io) override {    
@@ -162,20 +160,23 @@ struct MyApp : App {
           if (mutex.try_lock()) {
             if (sequencers[i].sequence.size() > 0) { // if there is something in the sequence
               auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-              granulator.set(voice, sequencers[i].grabSample()); // set properties of the voice -> taken from settings[playhead index]
+              granulator.set(voice, sequencers[i].grabSample()); // set properties of the voice based on where we are in the sequencer
               granulator.polySynth.triggerOn(voice); //trigger it on
 
-              sequencers[i].increment();
+              sequencers[i].increment(); // increment the playhead of the sequencer
             }
             mutex.unlock();
           }
         }
       }
 
+      recorder(0.5f * (io.out(0) + io.out(1))); // save to the buffer before we take into consideration the gain slider
       io.out(0) = tanh(io.out(0) * granulator.gain);
       io.out(1) = tanh(io.out(1) * granulator.gain);
     }
   }
+
+  void onExit() override { recorder.save("fm-grains.wav"); }
 };
 
 int main() {
