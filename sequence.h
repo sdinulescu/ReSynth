@@ -21,7 +21,7 @@ int count_id = 0; // keeps track of how many sequencers have already been added 
 struct Sequencer {
   int id = count_id; 
   al::Parameter rate{"/rate of sequencer " + std::to_string(id+1), "", 1.0, "", -30.0, 50.0};  // user input for rate of sequencer
-  al::Parameter gain{"/gain of sequencer " + std::to_string(id+1), "", 0.6, "", 0.01, 0.99};  // user input for gain of sequencer
+  al::Parameter gain{"/gain of sequencer " + std::to_string(id+1), "", 0.6, "", 0.0, 0.99};  // user input for gain of sequencer
   gam::Accum<> timer; // rate timer
   int playhead = 0; // where we are in the sequencer
   std::vector<GrainSettings> sequence; // stores the grain settings
