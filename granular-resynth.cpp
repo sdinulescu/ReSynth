@@ -43,7 +43,7 @@ struct MyApp : App {
       sequencers.push_back(s); 
     } 
     
-    for (int i = 0; i < NUM_SEQUENCERS; i++) { gui << sequencers[i].rate; } // add their rates to the GUI
+    for (int i = 0; i < NUM_SEQUENCERS; i++) { gui << sequencers[i].rate << sequencers[i].gain; } // add their rates to the GUI
     
     nav().pos(0, 0, 25);
     light.pos(0, 0, 25);
@@ -90,23 +90,21 @@ struct MyApp : App {
       float t = r.intersectSphere(granulator.settings[i].position, 0.2);
 
       if (t > 0.0f) {
-        //if(mutex.try_lock()) {
-          for (int j = 0; j < NUM_SEQUENCERS; j++) {
-            //sequencers[j].sayName();
-            if (sequencers[j].active) {
-              bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
+        mutex.lock();
+        for (int j = 0; j < NUM_SEQUENCERS; j++) {
+          //sequencers[j].sayName();
+          if (sequencers[j].active) {
+            bool found = sequencers[j].checkIntersection(granulator.settings[i].position); 
 
-              if (!found) {
-                granulator.settings[i].color = sequencers[j].color; // turn it whatever color is assigned to the sequencer
-                sequencers[j].addSample(granulator.settings[i]);
-                //sequencers[j].printSamples();
-                break;
-              } else { granulator.settings[i].color = al::Vec3f(1.0, 1.0, 1.0); } // turn it white again 
-            }
+            if (!found) {
+              granulator.settings[i].color = sequencers[j].color; // turn it whatever color is assigned to the sequencer
+              sequencers[j].addSample(granulator.settings[i]);
+              //sequencers[j].printSamples();
+              break;
+            } else { granulator.settings[i].color = al::Vec3f(1.0, 1.0, 1.0); } // turn it white again 
           }
-        
-          //mutex.unlock(); // unblocks
-        //}
+        }
+        mutex.unlock();
       }
     }
     return true;
@@ -120,7 +118,7 @@ struct MyApp : App {
       if (granulator.settings[i].hover == false && t > 0.0f) {
         // trigger grain
         auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-        granulator.set(voice, granulator.settings[i]); // set properties of the voice -> taken from settings[playhead index]
+        granulator.set(voice, granulator.settings[i], granulator.envelope); // set properties of the voice -> taken from settings[playhead index]
         granulator.polySynth.triggerOn(voice); //trigger it on
       }
       granulator.settings[i].hover = (t > 0.f);
@@ -160,7 +158,7 @@ struct MyApp : App {
           if (mutex.try_lock()) {
             if (sequencers[i].sequence.size() > 0) { // if there is something in the sequence
               auto* voice = granulator.polySynth.getVoice<Grain>(); // grab one of the voices
-              granulator.set(voice, sequencers[i].grabSample()); // set properties of the voice based on where we are in the sequencer
+              granulator.set(voice, sequencers[i].grabSample(), sequencers[i].gain); // set properties of the voice based on where we are in the sequencer
               granulator.polySynth.triggerOn(voice); //trigger it on
 
               sequencers[i].increment(); // increment the playhead of the sequencer

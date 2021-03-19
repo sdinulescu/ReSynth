@@ -151,7 +151,7 @@ struct Grain : al::SynthVoice {
 
   Grain() { mesh.primitive(al::Mesh::TRIANGLE_STRIP); }
 
-  void set(GrainSettings g) {
+  void set(GrainSettings g, float sequence_gain) {
     size = g.size;
 
     alpha.set(g.carrier_start, g.carrier_end, g.duration);
@@ -161,7 +161,7 @@ struct Grain : al::SynthVoice {
 
     moddepth.set(g.md_start, g.md_end, g.duration); // set start freq, target freq, duration in seconds
 
-    envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain);
+    envelope.set(g.envelope * g.duration, (1 - g.envelope) * g.duration, g.gain * sequence_gain);
 
     al::addSphere(mesh, 0.1);
     mesh.generateNormals();
@@ -218,8 +218,8 @@ struct Granulator {
     polySynth.allocatePolyphony<Grain>(nGrains); //this handles all grains that can happen at once
   } 
 
-  void set(Grain* voice, GrainSettings settings) {
-    voice->set(settings);
+  void set(Grain* voice, GrainSettings settings, float gain) {
+    voice->set(settings, gain);
   }
 
   void displayGrainSettings(al::Graphics &g) {
